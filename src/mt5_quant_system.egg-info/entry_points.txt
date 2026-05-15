@@ -1,0 +1,2 @@
+[console_scripts]
+mt5-quant = mt5_quant.cli:main

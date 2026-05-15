@@ -1,0 +1,17 @@
+{
+  "final_balance": 110000.0,
+  "net_profit": 0.0,
+  "total_trades": 0,
+  "win_rate": 0.0,
+  "gross_profit": 0,
+  "gross_loss": 0,
+  "avg_trade": 0.0,
+  "avg_win": 0.0,
+  "avg_loss": 0.0,
+  "profit_factor": 0.0,
+  "max_drawdown_pct": 0.0,
+  "blocked_entries": {},
+  "symbol": "XAUUSD",
+  "timeframe": "M1",
+  "strategy": "xau_m1_momentum"
+}

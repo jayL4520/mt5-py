@@ -1,0 +1,160 @@
+Metadata-Version: 2.4
+Name: mt5-quant-system
+Version: 0.1.0
+Summary: A Python-based quantitative trading system for MetaTrader 5.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: MetaTrader5>=5.0.45
+Requires-Dist: numpy>=1.26.0
+Requires-Dist: pandas>=2.2.0
+Requires-Dist: PyYAML>=6.0.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+
+# MT5 Quant System
+
+这是一个基于 Python + MetaTrader 5 官方接口的量化交易系统骨架，包含以下能力：
+
+- MT5 连接与账户登录
+- K 线数据抓取
+- 策略接口与默认双均线策略
+- ATR 止损与固定风险仓位管理
+- 市价单执行与持仓平仓
+- 本地轻量回测
+- 命令行入口
+
+## 1. 适用场景
+
+这套系统适合：
+
+- 先在 MT5 模拟盘跑策略
+- 逐步扩展成自己的多策略框架
+- 用 Python 做研究、信号生成和风险控制
+- 通过 MT5 完成真实下单
+
+默认实现采用：
+
+- 策略: `MA Cross + ATR Stop`
+- 仓位: 每笔风险固定百分比
+- 执行: 单品种、单策略、单方向持仓
+
+## 2. 项目结构
+
+```text
+src/mt5_quant/
+  cli.py
+  config.py
+  data.py
+  execution.py
+  backtest.py
+  models.py
+  risk.py
+  strategy/
+    base.py
+    ma_cross_atr.py
+```
+
+## 3. 安装
+
+建议先准备 Python 3.11+，并确保本机已安装 MT5 客户端。
+
+```bash
+pip install -e .
+```
+
+或者：
+
+```bash
+pip install MetaTrader5 pandas numpy PyYAML
+set PYTHONPATH=src
+```
+
+## 4. 配置
+
+复制并修改配置文件：
+
+```bash
+copy config.example.yaml config.yaml
+```
+
+关键配置项：
+
+- `mt5.login`: MT5 账号
+- `mt5.password`: MT5 密码
+- `mt5.server`: 券商服务器名
+- `mt5.path`: MT5 终端路径，可为空
+- `trading.symbol`: 交易品种，例如 `EURUSD`
+- `strategy.short_window / long_window`: 均线参数
+- `strategy.risk_per_trade`: 单笔风险占净值比例
+
+## 5. 运行方式
+
+### 回测
+
+优先使用 MT5 历史数据回测：
+
+```bash
+mt5-quant backtest --config config.yaml --bars 3000
+```
+
+如果没有可用 MT5 连接，也可以准备 CSV 文件，字段需要至少包含：
+
+```text
+time,open,high,low,close,tick_volume
+```
+
+然后运行：
+
+```bash
+mt5-quant backtest --config config.yaml --csv path\\to\\history.csv
+```
+
+### 实盘或模拟盘运行
+
+```bash
+mt5-quant live --config config.yaml
+```
+
+系统会轮询最新已收盘 K 线，根据信号做开仓或平仓。
+
+## 6. 当前默认逻辑
+
+### 开仓
+
+- 短均线上穿长均线: 做多
+- 短均线下穿长均线: 做空
+
+### 出场
+
+- 命中 ATR 止损
+- 命中固定盈亏比止盈
+- 反向均线交叉触发平仓
+
+### 仓位
+
+- 按 `risk_per_trade` 计算单笔最大亏损
+- 实盘下单时，使用 MT5 的 `order_calc_profit` 估算每手止损风险
+- 再按品种最小手数和步长修正下单量
+
+## 7. 扩展建议
+
+你后续可以继续加：
+
+- 多品种调度
+- 多策略组合
+- 时间过滤
+- 交易日历过滤
+- 持仓跟踪止损
+- 数据库记录交易与净值
+- Web/Telegram/企业微信告警
+- 参数优化和 walk-forward
+
+## 8. 风险提示
+
+这套代码是可扩展的交易系统骨架，不是可直接保证盈利的成品策略。实盘前至少要完成：
+
+- 品种点值核对
+- 券商成交规则核对
+- 滑点和手续费建模
+- 模拟盘验证
+- 异常断线恢复测试

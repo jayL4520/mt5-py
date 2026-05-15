@@ -1,0 +1,207 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+
+TIMEFRAME_ALIASES = {
+    "M1": "TIMEFRAME_M1",
+    "M5": "TIMEFRAME_M5",
+    "M15": "TIMEFRAME_M15",
+    "M30": "TIMEFRAME_M30",
+    "H1": "TIMEFRAME_H1",
+    "H4": "TIMEFRAME_H4",
+    "D1": "TIMEFRAME_D1",
+}
+
+
+class ConfigError(ValueError):
+    pass
+
+
+@dataclass(slots=True)
+class Mt5Config:
+    login: int
+    password: str
+    server: str
+    path: str = ""
+    timeout: int = 60000
+    portable: bool = False
+
+
+@dataclass(slots=True)
+class TradingConfig:
+    symbol: str
+    timeframe: str
+    history_bars: int
+    slippage_points: int
+    magic_number: int
+    comment: str
+    poll_interval_seconds: int
+    max_open_positions: int
+
+
+@dataclass(slots=True)
+class StrategyConfig:
+    name: str
+    short_window: int
+    long_window: int
+    atr_period: int
+    atr_stop_multiple: float
+    reward_to_risk: float
+    risk_per_trade: float
+    ema_fast: int
+    ema_slow: int
+    rsi_period: int
+    rsi_buy_threshold: float
+    rsi_sell_threshold: float
+    breakout_lookback: int
+    take_profit_pct: float
+    stop_loss_pct: float
+
+
+@dataclass(slots=True)
+class BacktestConfig:
+    initial_balance: float
+    commission_per_lot: float
+    spread_points: float
+    contract_size: float
+
+
+@dataclass(slots=True)
+class SafetyConfig:
+    timezone: str
+    trading_windows: list[str]
+    max_daily_loss_pct: float
+    max_consecutive_losses: int
+
+
+@dataclass(slots=True)
+class ReportingConfig:
+    output_dir: str
+    save_summary_json: bool
+    save_trades_csv: bool
+    save_equity_csv: bool
+
+
+@dataclass(slots=True)
+class AppConfig:
+    mt5: Mt5Config
+    trading: TradingConfig
+    strategy: StrategyConfig
+    backtest: BacktestConfig
+    safety: SafetyConfig
+    reporting: ReportingConfig
+
+
+def _read_yaml(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise ConfigError(f"Config file not found: {path}")
+    with path.open("r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle) or {}
+    if not isinstance(data, dict):
+        raise ConfigError("Config root must be a mapping.")
+    return data
+
+
+def _required(mapping: dict[str, Any], key: str) -> Any:
+    if key not in mapping:
+        raise ConfigError(f"Missing required config key: {key}")
+    return mapping[key]
+
+
+def load_config(path: str | Path) -> AppConfig:
+    raw = _read_yaml(Path(path))
+    mt5 = _required(raw, "mt5")
+    trading = _required(raw, "trading")
+    strategy = _required(raw, "strategy")
+    backtest = raw.get("backtest", {})
+    safety = raw.get("safety", {})
+    reporting = raw.get("reporting", {})
+
+    cfg = AppConfig(
+        mt5=Mt5Config(
+            login=int(_required(mt5, "login")),
+            password=str(_required(mt5, "password")),
+            server=str(_required(mt5, "server")),
+            path=str(mt5.get("path", "")),
+            timeout=int(mt5.get("timeout", 60000)),
+            portable=bool(mt5.get("portable", False)),
+        ),
+        trading=TradingConfig(
+            symbol=str(_required(trading, "symbol")),
+            timeframe=str(_required(trading, "timeframe")).upper(),
+            history_bars=int(trading.get("history_bars", 800)),
+            slippage_points=int(trading.get("slippage_points", 20)),
+            magic_number=int(trading.get("magic_number", 260516)),
+            comment=str(trading.get("comment", "mt5-quant")),
+            poll_interval_seconds=int(trading.get("poll_interval_seconds", 5)),
+            max_open_positions=int(trading.get("max_open_positions", 1)),
+        ),
+        strategy=StrategyConfig(
+            name=str(strategy.get("name", "ma_cross_atr")),
+            short_window=int(strategy.get("short_window", 20)),
+            long_window=int(strategy.get("long_window", 50)),
+            atr_period=int(strategy.get("atr_period", 14)),
+            atr_stop_multiple=float(strategy.get("atr_stop_multiple", 2.0)),
+            reward_to_risk=float(strategy.get("reward_to_risk", 2.0)),
+            risk_per_trade=float(strategy.get("risk_per_trade", 0.01)),
+            ema_fast=int(strategy.get("ema_fast", 21)),
+            ema_slow=int(strategy.get("ema_slow", 55)),
+            rsi_period=int(strategy.get("rsi_period", 14)),
+            rsi_buy_threshold=float(strategy.get("rsi_buy_threshold", 55.0)),
+            rsi_sell_threshold=float(strategy.get("rsi_sell_threshold", 45.0)),
+            breakout_lookback=int(strategy.get("breakout_lookback", 20)),
+            take_profit_pct=float(strategy.get("take_profit_pct", 0.003)),
+            stop_loss_pct=float(strategy.get("stop_loss_pct", 0.004)),
+        ),
+        backtest=BacktestConfig(
+            initial_balance=float(backtest.get("initial_balance", 100000)),
+            commission_per_lot=float(backtest.get("commission_per_lot", 0.0)),
+            spread_points=float(backtest.get("spread_points", 10)),
+            contract_size=float(backtest.get("contract_size", 1.0)),
+        ),
+        safety=SafetyConfig(
+            timezone=str(safety.get("timezone", "Asia/Shanghai")),
+            trading_windows=[str(value) for value in safety.get("trading_windows", ["14:00-02:00"])],
+            max_daily_loss_pct=float(safety.get("max_daily_loss_pct", 0.02)),
+            max_consecutive_losses=int(safety.get("max_consecutive_losses", 3)),
+        ),
+        reporting=ReportingConfig(
+            output_dir=str(reporting.get("output_dir", "reports")),
+            save_summary_json=bool(reporting.get("save_summary_json", True)),
+            save_trades_csv=bool(reporting.get("save_trades_csv", True)),
+            save_equity_csv=bool(reporting.get("save_equity_csv", True)),
+        ),
+    )
+
+    if cfg.trading.timeframe not in TIMEFRAME_ALIASES:
+        allowed = ", ".join(TIMEFRAME_ALIASES)
+        raise ConfigError(f"Unsupported timeframe {cfg.trading.timeframe}. Allowed: {allowed}")
+
+    if not 0 < cfg.strategy.risk_per_trade < 1:
+        raise ConfigError("strategy.risk_per_trade must be between 0 and 1.")
+
+    if cfg.strategy.name == "ma_cross_atr" and cfg.strategy.short_window >= cfg.strategy.long_window:
+        raise ConfigError("strategy.short_window must be smaller than strategy.long_window.")
+
+    if cfg.strategy.name == "xau_m1_momentum":
+        if cfg.strategy.ema_fast >= cfg.strategy.ema_slow:
+            raise ConfigError("strategy.ema_fast must be smaller than strategy.ema_slow.")
+        if not 0 < cfg.strategy.take_profit_pct < 1:
+            raise ConfigError("strategy.take_profit_pct must be between 0 and 1.")
+        if not 0 < cfg.strategy.stop_loss_pct < 1:
+            raise ConfigError("strategy.stop_loss_pct must be between 0 and 1.")
+        if cfg.strategy.rsi_sell_threshold >= cfg.strategy.rsi_buy_threshold:
+            raise ConfigError("strategy.rsi_sell_threshold must be smaller than strategy.rsi_buy_threshold.")
+
+    if not 0 <= cfg.safety.max_daily_loss_pct < 1:
+        raise ConfigError("safety.max_daily_loss_pct must be between 0 and 1.")
+
+    if cfg.safety.max_consecutive_losses < 1:
+        raise ConfigError("safety.max_consecutive_losses must be at least 1.")
+
+    return cfg

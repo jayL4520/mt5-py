@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mt5-quant-system"
+version = "0.1.0"
+description = "A Python-based quantitative trading system for MetaTrader 5."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "MetaTrader5>=5.0.45",
+  "numpy>=1.26.0",
+  "pandas>=2.2.0",
+  "PyYAML>=6.0.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
+
+[project.scripts]
+mt5-quant = "mt5_quant.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

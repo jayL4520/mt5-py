@@ -1,0 +1,54 @@
+mt5:
+  login: 5050445394
+  password: "UuVy*b7g"
+  server: "MetaQuotes-Demo"
+  path: ""
+  timeout: 60000
+  portable: false
+
+
+trading:
+  symbol: "XAUUSD"
+  timeframe: "M1"
+  history_bars: 1500
+  slippage_points: 50
+  magic_number: 260516
+  comment: "xau-m1-momentum"
+  poll_interval_seconds: 2
+  max_open_positions: 1
+
+strategy:
+  name: "xau_m1_momentum"
+  risk_per_trade: 0.0025
+  ema_fast: 21
+  ema_slow: 55
+  rsi_period: 14
+  rsi_buy_threshold: 56
+  rsi_sell_threshold: 44
+  breakout_lookback: 18
+  take_profit_pct: 0.003
+  stop_loss_pct: 0.004
+  short_window: 20
+  long_window: 50
+  atr_period: 14
+  atr_stop_multiple: 2.0
+  reward_to_risk: 2.0
+
+backtest:
+  initial_balance: 110000
+  commission_per_lot: 0.0
+  spread_points: 50
+  contract_size: 1.0
+
+safety:
+  timezone: "Asia/Shanghai"
+  trading_windows:
+    - "14:00-02:00"
+  max_daily_loss_pct: 0.02
+  max_consecutive_losses: 3
+
+reporting:
+  output_dir: "reports/xauusd_m1"
+  save_summary_json: true
+  save_trades_csv: true
+  save_equity_csv: true

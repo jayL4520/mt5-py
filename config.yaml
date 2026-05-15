@@ -1,0 +1,32 @@
+mt5:
+  login: 5050445394
+  password: "UuVy*b7g"
+  server: "MetaQuotes-Demo"
+  path: ""
+  timeout: 60000
+  portable: false
+
+trading:
+  symbol: "XAUUSD"
+  timeframe: "M1"
+  history_bars: 800
+  slippage_points: 20
+  magic_number: 260516
+  comment: "ma-cross-atr"
+  poll_interval_seconds: 5
+  max_open_positions: 1
+
+strategy:
+  name: "ma_cross_atr"
+  short_window: 20
+  long_window: 50
+  atr_period: 14
+  atr_stop_multiple: 2.0
+  reward_to_risk: 2.0
+  risk_per_trade: 0.02
+
+backtest:
+  initial_balance: 100000
+  commission_per_lot: 0.0
+  spread_points: 10
+  contract_size: 1.0
