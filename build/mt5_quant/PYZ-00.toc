@@ -2575,6 +2575,12 @@
   ('mt5_quant.guardrails',
    'C:\\Users\\A\\Documents\\Codex\\2026-05-14\\mt5\\src\\mt5_quant\\guardrails.py',
    'PYMODULE'),
+  ('mt5_quant.gui',
+   'C:\\Users\\A\\Documents\\Codex\\2026-05-14\\mt5\\src\\mt5_quant\\gui.py',
+   'PYMODULE'),
+  ('mt5_quant.launcher_profiles',
+   'C:\\Users\\A\\Documents\\Codex\\2026-05-14\\mt5\\src\\mt5_quant\\launcher_profiles.py',
+   'PYMODULE'),
   ('mt5_quant.live',
    'C:\\Users\\A\\Documents\\Codex\\2026-05-14\\mt5\\src\\mt5_quant\\live.py',
    'PYMODULE'),
@@ -8941,9 +8947,33 @@
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\\Lib\\tkinter\\__init__.py',
    'PYMODULE'),
+  ('tkinter.commondialog',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\\Lib\\tkinter\\commondialog.py',
+   'PYMODULE'),
   ('tkinter.constants',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\\Lib\\tkinter\\constants.py',
+   'PYMODULE'),
+  ('tkinter.dialog',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\\Lib\\tkinter\\dialog.py',
+   'PYMODULE'),
+  ('tkinter.filedialog',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\\Lib\\tkinter\\filedialog.py',
+   'PYMODULE'),
+  ('tkinter.messagebox',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\\Lib\\tkinter\\messagebox.py',
+   'PYMODULE'),
+  ('tkinter.simpledialog',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\\Lib\\tkinter\\simpledialog.py',
+   'PYMODULE'),
+  ('tkinter.ttk',
+   'C:\\Program '
+   'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3568.0_x64__qbz5n2kfra8p0\\Lib\\tkinter\\ttk.py',
    'PYMODULE'),
   ('token',
    'C:\\Program '

@@ -1,4 +1,4 @@
-"""命令行入口与多品种启动菜单。"""
+"""命令行入口、文本启动器与 GUI 启动分发。"""
 
 from __future__ import annotations
 
@@ -14,20 +14,9 @@ from mt5_quant import __version__
 from mt5_quant.backtest import BacktestEngine
 from mt5_quant.config import AppConfig, load_config
 from mt5_quant.data import Mt5Gateway
+from mt5_quant.launcher_profiles import PROFILE_PRESETS, get_launch_config
 from mt5_quant.live import LiveTradingEngine
 from mt5_quant.strategy import BtcM15RegimeStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
-
-
-PROFILE_PRESETS = {
-    "xau": {
-        "label": "黄金 XAUUSD / M1",
-        "config": "config.xauusd.m1.yaml",
-    },
-    "btc": {
-        "label": "比特币 BTCUSD / M15",
-        "config": "config.btcusd.m15.yaml",
-    },
-}
 
 
 def configure_logging() -> None:
@@ -105,33 +94,6 @@ def run_live(config: AppConfig) -> None:
     engine.run()
 
 
-def resolve_runtime_root() -> Path:
-    """解析当前运行时根目录，兼容源码和打包 exe。"""
-    if hasattr(sys, "_MEIPASS"):
-        return Path(getattr(sys, "_MEIPASS"))
-    return Path(__file__).resolve().parents[2]
-
-
-def resolve_config_path(config_name: str) -> Path:
-    """优先读取当前目录配置，读不到再回退到打包内置配置。"""
-    cwd_path = Path.cwd() / config_name
-    if cwd_path.exists():
-        return cwd_path
-
-    runtime_path = resolve_runtime_root() / config_name
-    if runtime_path.exists():
-        return runtime_path
-
-    raise FileNotFoundError(f"Config file not found: {config_name}")
-
-
-def get_profile_config(profile_name: str) -> Path:
-    """根据预设名称获取配置文件路径。"""
-    if profile_name not in PROFILE_PRESETS:
-        raise ValueError(f"Unsupported profile: {profile_name}")
-    return resolve_config_path(PROFILE_PRESETS[profile_name]["config"])
-
-
 def prompt_choice(title: str, options: list[tuple[str, str]]) -> str:
     """显示简单文本菜单并返回用户选择。"""
     print()
@@ -154,10 +116,10 @@ def prompt_text(prompt: str, default: str = "") -> str:
     return value or default
 
 
-def run_launcher() -> None:
-    """无参数时进入多品种切换启动器。"""
+def run_text_launcher() -> None:
+    """无 GUI 时进入文本版多品种切换启动器。"""
     print(f"MT5 量化交易系统 v{__version__}")
-    print("启动模式：多品种切换启动器")
+    print("启动模式：文本版多品种切换启动器")
 
     profile_key = prompt_choice(
         "请选择要运行的品种：",
@@ -172,7 +134,7 @@ def run_launcher() -> None:
         return
 
     profile_name = "xau" if profile_key == "1" else "btc"
-    config_path = get_profile_config(profile_name)
+    config_path = get_launch_config(profile_name)
     config = load_config(config_path)
 
     mode = prompt_choice(
@@ -195,7 +157,6 @@ def run_launcher() -> None:
     print(f"配置文件：{config_path}")
 
     if mode == "1":
-        print("即将进入实盘 / 模拟盘轮询模式。")
         run_live(config)
         return
 
@@ -208,6 +169,13 @@ def run_launcher() -> None:
     csv_path = prompt_text("请输入 CSV 文件路径")
     report_dir = prompt_text("请输入报表输出目录", config.reporting.output_dir)
     run_backtest(config, csv_path=csv_path, bars=None, report_dir=report_dir)
+
+
+def run_gui_launcher() -> None:
+    """尝试启动 GUI 启动器。"""
+    from mt5_quant.gui import launch_gui_application
+
+    launch_gui_application()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -231,16 +199,17 @@ def build_parser() -> argparse.ArgumentParser:
     launcher_parser.add_argument("--csv", help="CSV path used for CSV backtest")
     launcher_parser.add_argument("--report-dir", help="Directory to export backtest report files")
 
+    subparsers.add_parser("gui", help="Open the GUI launcher")
     return parser
 
 
 def run_launch_command(args) -> None:
     """支持命令行方式直接指定预设品种。"""
     if not args.profile or not args.mode:
-        run_launcher()
+        run_text_launcher()
         return
 
-    config = load_config(get_profile_config(args.profile))
+    config = load_config(get_launch_config(args.profile))
     if args.mode == "live":
         run_live(config)
         return
@@ -253,11 +222,18 @@ def main() -> None:
     configure_logging()
 
     if len(sys.argv) == 1:
-        run_launcher()
+        try:
+            run_gui_launcher()
+        except Exception:
+            run_text_launcher()
         return
 
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.command == "gui":
+        run_gui_launcher()
+        return
 
     if args.command == "launch":
         run_launch_command(args)
