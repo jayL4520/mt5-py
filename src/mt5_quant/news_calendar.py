@@ -215,6 +215,10 @@ class Mt5FileCalendarClient:
                 )
         return TradingEconomicsCalendarClient._deduplicate(windows)
 
+    def get_csv_path(self) -> Path:
+        """返回当前应读取的 MT5 财经日历导出文件路径。"""
+        return self._resolve_csv_path()
+
     def _resolve_csv_path(self) -> Path:
         """优先使用显式 file_path，否则自动定位 MT5 Common\\Files。"""
         if self.config.file_path:
@@ -258,4 +262,28 @@ def build_calendar_client(
     if config.provider == "tradingeconomics":
         return TradingEconomicsCalendarClient(config, timezone_name)
     LOGGER.warning("Unsupported calendar provider: %s", config.provider)
+    return None
+
+
+def validate_calendar_data_source(
+    config: NewsCalendarConfig,
+    timezone_name: str,
+    mt5_path: str = "",
+) -> Path | None:
+    """在启动交易或回测前校验财经日历数据源是否就绪。"""
+    client = build_calendar_client(config, timezone_name, mt5_path)
+    if client is None:
+        return None
+
+    if isinstance(client, Mt5FileCalendarClient):
+        csv_path = client.get_csv_path()
+        if not csv_path.exists():
+            raise FileNotFoundError(
+                "已启用 MT5 财经日历文件模式，但未找到新闻文件："
+                f"{csv_path}\n"
+                "请先在 MT5 中挂载并运行 mql5/ExportEconomicCalendar.mq5，"
+                "确认已导出 Common\\Files\\mt5_calendar_events.csv 后再启动。"
+            )
+        return csv_path
+
     return None

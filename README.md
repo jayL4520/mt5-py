@@ -211,6 +211,27 @@ mt5-quant backtest --config config.btcusd.m15.yaml --bars 5000
 mt5-quant live --config config.btcusd.m15.yaml
 ```
 
+### 5. BTC 参数优化
+
+现在已经新增 BTC 专用参数优化入口，可直接结合 CSV 历史数据做网格搜索：
+
+```bash
+mt5-quant optimize-btc --config config.btcusd.m15.yaml --csv sample_btc.csv --output-dir reports/btc_opt
+```
+
+默认模板文件：
+
+- [btc_optimization_template.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\templates\btc_optimization_template.yaml)
+- [btc_backtest_report_template.md](C:\Users\A\Documents\Codex\2026-05-14\mt5\templates\btc_backtest_report_template.md)
+
+优化完成后会额外输出：
+
+- `optimization_results.csv`
+- `best_parameters.json`
+- `best_summary.json`
+- `optimization_report.md`
+- `btc_backtest_report_template.md`
+
 ## 六、打包 EXE
 
 当前版本已经加好打包工具，可以直接打包成 `exe`。
@@ -244,6 +265,7 @@ pip install -e .[build]
 - `config.xauusd.m1.yaml`
 - `config.btcusd.m15.yaml`
 - `mql5/ExportEconomicCalendar.mq5`
+- `templates/`
 
 ## 七、自动财经日历
 
@@ -251,6 +273,13 @@ pip install -e .[build]
 
 - 由 [ExportEconomicCalendar.mq5](C:\Users\A\Documents\Codex\2026-05-14\mt5\mql5\ExportEconomicCalendar.mq5) 导出
 - Python 自动读取 `Common\Files\mt5_calendar_events.csv`
+
+导出器当前已增强为：
+
+- 默认只导出 `USD` 高影响新闻
+- 每次导出都会追加状态日志到 `Common\Files\mt5_calendar_status.log`
+- 启动时会打印自检提示，方便排查 MT5 是否联网、EA 是否真正导出成功
+- Python 在启动实盘、回测、BTC 参数优化前，会先检查新闻文件是否存在；如果不存在，会直接给出明确报错，而不是等运行中再隐式跳过
 
 ### 接入步骤
 
@@ -284,6 +313,13 @@ pip install -e .[build]
 - `summary.json`
 - `trades.csv`
 - `equity_curve.csv`
+
+如果执行了 `optimize-btc`，还会额外输出：
+
+- `optimization_results.csv`
+- `best_parameters.json`
+- `best_summary.json`
+- `optimization_report.md`
 
 ## 十、建议
 

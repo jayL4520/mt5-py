@@ -1,0 +1,33 @@
+# BTC M15 策略参数优化模板
+# 用法：
+# 1. 先准备好 BTC 的历史 CSV 数据；
+# 2. 再执行：
+#    mt5-quant optimize-btc --config config.btcusd.m15.yaml --csv sample_btc.csv --output-dir reports/btc_opt
+# 3. 如需单独指定模板，可加：
+#    --template templates/btc_optimization_template.yaml
+
+# 需要做网格搜索的策略参数。
+# 每个字段都使用列表，程序会自动做笛卡尔积组合。
+strategy_grid:
+  ema_fast: [18, 20]
+  ema_slow: [55, 60]
+  breakout_lookback: [18, 20]
+  atr_stop_multiple: [2.2, 2.6]
+  reward_to_risk: [2.2, 2.6]
+
+# 筛选门槛。
+# 不满足门槛的组合仍会出现在结果 CSV 里，但会标记为“未通过”。
+qualification:
+  min_trades: 3
+  max_drawdown_pct: 0.25
+  min_profit_factor: 0.8
+
+# 排名规则。
+# 除 max_drawdown_pct 外，其余指标默认越大越好。
+ranking:
+  primary_metric: "net_profit"
+  secondary_metric: "profit_factor"
+
+# 输出控制。
+output:
+  top_n: 10

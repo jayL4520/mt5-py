@@ -195,6 +195,8 @@ class BacktestEngine:
             windows = self.calendar_client.fetch_windows(start, end)
             self.guard.set_dynamic_news_windows([(item.start, item.end) for item in windows])
             LOGGER.info("Loaded %s automatic news blackout windows for backtest.", len(windows))
+        except FileNotFoundError:
+            raise
         except Exception as exc:  # pragma: no cover
             LOGGER.warning("Failed to load automatic news windows for backtest: %s", exc)
 

@@ -9,7 +9,10 @@ datas = [
     (str(project_dir / "config.example.yaml"), "."),
     (str(project_dir / "config.xauusd.m1.yaml"), "."),
     (str(project_dir / "config.btcusd.m15.yaml"), "."),
+    (str(project_dir / "config.btcusd.m15.offline.yaml"), "."),
     (str(project_dir / "mql5"), "mql5"),
+    (str(project_dir / "sample_mt5_calendar.csv"), "."),
+    (str(project_dir / "templates"), "templates"),
 ]
 
 

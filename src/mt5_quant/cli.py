@@ -16,6 +16,7 @@ from mt5_quant.config import AppConfig, load_config
 from mt5_quant.data import Mt5Gateway
 from mt5_quant.launcher_profiles import PROFILE_PRESETS, get_launch_config, get_logs_dir
 from mt5_quant.live import LiveTradingEngine
+from mt5_quant.news_calendar import validate_calendar_data_source
 from mt5_quant.strategy import BtcM15RegimeStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
 
 
@@ -55,6 +56,15 @@ def load_csv_history(path: str | Path) -> pd.DataFrame:
     return frame.set_index("time")
 
 
+def validate_runtime_dependencies(config: AppConfig) -> None:
+    """在真正启动前校验外部依赖是否齐全，避免运行中才失败。"""
+    validate_calendar_data_source(
+        config.news_calendar,
+        config.safety.timezone,
+        config.mt5.path,
+    )
+
+
 def export_backtest_report(result: dict[str, object], output_dir: str | Path, config: AppConfig) -> None:
     """导出回测摘要、成交明细和净值曲线。"""
     path = Path(output_dir)
@@ -75,6 +85,7 @@ def export_backtest_report(result: dict[str, object], output_dir: str | Path, co
 
 def run_backtest(config: AppConfig, csv_path: str | None, bars: int | None, report_dir: str | None) -> None:
     """执行回测流程。"""
+    validate_runtime_dependencies(config)
     strategy = build_strategy(config)
     if csv_path:
         data = load_csv_history(csv_path)
@@ -95,6 +106,7 @@ def run_backtest(config: AppConfig, csv_path: str | None, bars: int | None, repo
 
 def run_live(config: AppConfig) -> None:
     """执行实盘或模拟盘轮询流程。"""
+    validate_runtime_dependencies(config)
     strategy = build_strategy(config)
     engine = LiveTradingEngine(config, strategy)
     engine.run()
@@ -184,6 +196,19 @@ def run_gui_launcher() -> None:
     launch_gui_application()
 
 
+def run_btc_optimization_command(args) -> None:
+    """运行 BTC 参数优化并导出中文报告。"""
+    from mt5_quant.optimizer import run_btc_optimization
+
+    result = run_btc_optimization(
+        config_path=args.config,
+        csv_path=args.csv,
+        output_dir=args.output_dir,
+        template_path=args.template,
+    )
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
 def build_parser() -> argparse.ArgumentParser:
     """构造命令行参数解析器。"""
     parser = argparse.ArgumentParser(description=f"MT5 quantitative trading system v{__version__}")
@@ -204,6 +229,12 @@ def build_parser() -> argparse.ArgumentParser:
     launcher_parser.add_argument("--bars", type=int, help="Bars used for MT5 history backtest")
     launcher_parser.add_argument("--csv", help="CSV path used for CSV backtest")
     launcher_parser.add_argument("--report-dir", help="Directory to export backtest report files")
+
+    optimize_parser = subparsers.add_parser("optimize-btc", help="Run BTC parameter optimization")
+    optimize_parser.add_argument("--config", required=True, help="Path to BTC yaml config")
+    optimize_parser.add_argument("--csv", required=True, help="Path to BTC CSV history file")
+    optimize_parser.add_argument("--output-dir", required=True, help="Directory to export optimization files")
+    optimize_parser.add_argument("--template", help="Path to BTC optimization template yaml")
 
     subparsers.add_parser("gui", help="Open the GUI launcher")
     return parser
@@ -243,6 +274,10 @@ def main() -> None:
 
     if args.command == "launch":
         run_launch_command(args)
+        return
+
+    if args.command == "optimize-btc":
+        run_btc_optimization_command(args)
         return
 
     config = load_config(args.config)

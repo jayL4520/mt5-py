@@ -1,0 +1,141 @@
+# BTC 离线参数优化 / CSV 回测示例配置
+# 这个文件专门用于本地 CSV 回测和 optimize-btc 验证，不依赖真实 MT5 账户。
+
+mt5:
+  # 占位账号，仅为了通过配置加载
+  login: 100000
+  # 占位密码，仅为了通过配置加载
+  password: "demo-password"
+  # 占位服务器，仅为了通过配置加载
+  server: "demo-server"
+  # 留空表示不强制指定 MT5 路径
+  path: ""
+  # 初始化超时毫秒
+  timeout: 60000
+  # 是否以 portable 模式启动
+  portable: false
+
+trading:
+  # 交易品种
+  symbol: "BTCUSD"
+  # 默认周期
+  timeframe: "M15"
+  # 历史 K 线数量
+  history_bars: 2500
+  # 允许滑点
+  slippage_points: 300
+  # 魔术号
+  magic_number: 260520
+  # 订单备注
+  comment: "btc-m15-offline"
+  # 轮询秒数
+  poll_interval_seconds: 5
+  # 最大同时持仓数
+  max_open_positions: 1
+
+strategy:
+  # 策略名称
+  name: "btc_m15_regime"
+  # 单笔风险比例
+  risk_per_trade: 0.004
+  # 快 EMA
+  ema_fast: 20
+  # 慢 EMA
+  ema_slow: 60
+  # RSI 周期
+  rsi_period: 14
+  # 多头 RSI 阈值
+  rsi_buy_threshold: 58
+  # 空头 RSI 阈值
+  rsi_sell_threshold: 42
+  # 突破回看窗口
+  breakout_lookback: 20
+  # ATR 周期
+  atr_period: 14
+  # ATR 止损倍数
+  atr_stop_multiple: 2.4
+  # 盈亏比
+  reward_to_risk: 2.6
+  # ADX 周期
+  adx_period: 14
+  # ADX 阈值
+  adx_threshold: 24
+  # 成交量均值窗口
+  volume_window: 20
+  # 成交量确认倍数
+  volume_multiplier: 1.1
+  # 突破缓冲比例
+  breakout_buffer_pct: 0.001
+  # 保留字段
+  take_profit_pct: 0.02
+  stop_loss_pct: 0.01
+  short_window: 20
+  long_window: 50
+
+backtest:
+  # 初始资金
+  initial_balance: 100000
+  # 手续费
+  commission_per_lot: 0.0
+  # 点差
+  spread_points: 1000
+  # 合约乘数
+  contract_size: 1.0
+
+safety:
+  # 风控时区
+  timezone: "Asia/Shanghai"
+  # 允许交易时段
+  trading_windows:
+    - "00:00-24:00"
+  # 最大日内亏损
+  max_daily_loss_pct: 0.03
+  # 最大连续亏损
+  max_consecutive_losses: 3
+  # 是否日内单方向
+  one_direction_per_day: false
+  # 手工新闻黑窗
+  news_blackout_windows: []
+  # 是否启用移动止损
+  trailing_stop_enabled: true
+  # 移动止损触发比例
+  trailing_trigger_pct: 0.012
+  # 移动止损跟随比例
+  trailing_distance_pct: 0.008
+
+news_calendar:
+  # 启用新闻文件检查
+  enabled: true
+  # 使用本地 MT5 文件模式
+  provider: "mt5_file"
+  # 保留字段
+  api_key: "guest:guest"
+  # 关注国家
+  countries:
+    - "united states"
+  # 高影响新闻
+  importance: 3
+  # 前置黑窗分钟
+  pre_blackout_minutes: 15
+  # 后置黑窗分钟
+  post_blackout_minutes: 20
+  # 向前读取天数
+  lookahead_days: 7
+  # 缓存分钟
+  cache_minutes: 30
+  # 请求超时
+  request_timeout_seconds: 20
+  # 默认文件名
+  common_filename: "mt5_calendar_events.csv"
+  # 这里显式指定仓库内样例文件，方便离线验证
+  file_path: "sample_mt5_calendar.csv"
+
+reporting:
+  # 默认输出目录
+  output_dir: "reports/btcusd_m15_offline"
+  # 是否导出 summary.json
+  save_summary_json: true
+  # 是否导出 trades.csv
+  save_trades_csv: true
+  # 是否导出 equity_curve.csv
+  save_equity_csv: true
