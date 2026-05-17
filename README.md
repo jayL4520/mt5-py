@@ -124,6 +124,35 @@ pip install -e .[build]
 
 ## 五、运行方式
 
+### 0. 多品种切换启动器
+
+现在同一个 `exe` 或同一个 Python 入口已经支持“多品种切换启动器”。
+
+如果你直接双击：
+
+- `mt5-quant.exe`
+
+或者直接运行：
+
+```bash
+mt5-quant
+```
+
+系统会自动进入菜单，你可以直接选择：
+
+- 黄金 `XAUUSD / M1`
+- 比特币 `BTCUSD / M15`
+- 实盘 / 模拟盘
+- MT5 历史回测
+- CSV 回测
+
+如果你想用命令直接指定预设，也可以：
+
+```bash
+mt5-quant launch --profile xau --mode live
+mt5-quant launch --profile btc --mode backtest --bars 5000
+```
+
 ### 1. 黄金回测
 
 ```bash
