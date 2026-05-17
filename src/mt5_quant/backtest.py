@@ -1,6 +1,9 @@
+"""本地回测引擎。"""
+
 from __future__ import annotations
 
 from dataclasses import asdict
+import logging
 from math import inf
 
 import pandas as pd
@@ -8,7 +11,10 @@ import pandas as pd
 from mt5_quant.config import AppConfig
 from mt5_quant.guardrails import RiskSnapshot, SafetyGuard
 from mt5_quant.models import BacktestTrade, Position
+from mt5_quant.news_calendar import build_calendar_client
 from mt5_quant.strategy.base import Strategy
+
+LOGGER = logging.getLogger(__name__)
 
 
 class BacktestEngine:
@@ -16,8 +22,14 @@ class BacktestEngine:
         self.config = config
         self.strategy = strategy
         self.guard = SafetyGuard(config.safety)
+        self.calendar_client = build_calendar_client(
+            config.news_calendar,
+            config.safety.timezone,
+            config.mt5.path,
+        )
 
     def run(self, data: pd.DataFrame) -> dict[str, object]:
+        self._load_dynamic_news_windows(data)
         balance = self.config.backtest.initial_balance
         equity_curve: list[dict[str, object]] = []
         trades: list[BacktestTrade] = []
@@ -31,6 +43,7 @@ class BacktestEngine:
         blocked_entries: dict[str, int] = {}
         peak_balance = balance
         max_drawdown_pct = 0.0
+        day_direction: str | None = None
 
         for timestamp, bar in data.iterrows():
             day_key = self.guard.local_day_key(timestamp)
@@ -38,6 +51,7 @@ class BacktestEngine:
                 current_day = day_key
                 day_start_balance = balance
                 consecutive_losses = 0
+                day_direction = None
 
             if pending_entry is not None and position is None:
                 position = Position(
@@ -53,6 +67,7 @@ class BacktestEngine:
                 pending_entry = None
 
             if position is not None:
+                self._apply_trailing_stop(position, bar)
                 exit_price, exit_reason = self._check_exit(position, bar)
                 if exit_price is not None:
                     pnl = self._calculate_pnl(position, exit_price)
@@ -107,6 +122,12 @@ class BacktestEngine:
                 )
                 can_open, reason = self.guard.can_open_trade(timestamp, risk)
                 if can_open:
+                    direction_allowed, direction_reason = self.guard.is_direction_allowed(signal.action, day_direction)
+                    if not direction_allowed:
+                        blocked_entries[direction_reason] = blocked_entries.get(direction_reason, 0) + 1
+                        can_open = False
+
+                if can_open:
                     stop_loss = signal.stop_loss or float(bar["close"])
                     distance = abs(float(bar["close"]) - stop_loss)
                     if distance > 0:
@@ -126,6 +147,7 @@ class BacktestEngine:
                             "take_profit": signal.take_profit,
                             "entry_time": str(timestamp),
                         }
+                        day_direction = signal.action
                 else:
                     blocked_entries[reason] = blocked_entries.get(reason, 0) + 1
 
@@ -163,6 +185,19 @@ class BacktestEngine:
             "equity_curve": equity_curve,
         }
 
+    def _load_dynamic_news_windows(self, data: pd.DataFrame) -> None:
+        """回测前按历史区间一次性生成新闻黑窗。"""
+        if self.calendar_client is None or data.empty:
+            return
+        start = data.index.min()
+        end = data.index.max()
+        try:
+            windows = self.calendar_client.fetch_windows(start, end)
+            self.guard.set_dynamic_news_windows([(item.start, item.end) for item in windows])
+            LOGGER.info("Loaded %s automatic news blackout windows for backtest.", len(windows))
+        except Exception as exc:  # pragma: no cover
+            LOGGER.warning("Failed to load automatic news windows for backtest: %s", exc)
+
     def _check_exit(self, position: Position, bar: pd.Series) -> tuple[float | None, str]:
         high = float(bar["high"])
         low = float(bar["low"])
@@ -187,6 +222,31 @@ class BacktestEngine:
         if position.side == "buy":
             return (exit_price - position.price_open) * position.volume * multiplier
         return (position.price_open - exit_price) * position.volume * multiplier
+
+    def _apply_trailing_stop(self, position: Position, bar: pd.Series) -> None:
+        if not self.config.safety.trailing_stop_enabled:
+            return
+
+        current_price = float(bar["close"])
+        entry_price = position.price_open
+
+        if position.side == "buy":
+            move_pct = (current_price - entry_price) / entry_price
+            if move_pct < self.config.safety.trailing_trigger_pct:
+                return
+            candidate_sl = current_price * (1 - self.config.safety.trailing_distance_pct)
+            current_sl = position.stop_loss or 0.0
+            if candidate_sl > current_sl:
+                position.stop_loss = candidate_sl
+            return
+
+        move_pct = (entry_price - current_price) / entry_price
+        if move_pct < self.config.safety.trailing_trigger_pct:
+            return
+        candidate_sl = current_price * (1 + self.config.safety.trailing_distance_pct)
+        current_sl = position.stop_loss or float("inf")
+        if candidate_sl < current_sl:
+            position.stop_loss = candidate_sl
 
     @staticmethod
     def _infer_point(data: pd.DataFrame) -> float:

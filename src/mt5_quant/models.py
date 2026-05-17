@@ -1,3 +1,5 @@
+"""系统内通用数据结构定义。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

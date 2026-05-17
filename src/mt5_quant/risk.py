@@ -1,3 +1,5 @@
+"""仓位风险控制模块。"""
+
 from __future__ import annotations
 
 import math
@@ -7,11 +9,13 @@ from mt5_quant.data import Mt5Gateway
 
 
 class RiskManager:
+    """按单笔风险比例计算下单手数。"""
     def __init__(self, config: AppConfig, gateway: Mt5Gateway) -> None:
         self.config = config
         self.gateway = gateway
 
     def calculate_volume(self, side: str, entry: float, stop_loss: float) -> float:
+        """根据账户余额和止损距离计算标准化手数。"""
         account = self.gateway.get_account_info()
         info = self.gateway.get_symbol_info()
         risk_amount = float(account.balance) * self.config.strategy.risk_per_trade

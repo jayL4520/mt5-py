@@ -1,3 +1,5 @@
+"""配置加载模块。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -77,6 +79,27 @@ class SafetyConfig:
     trading_windows: list[str]
     max_daily_loss_pct: float
     max_consecutive_losses: int
+    one_direction_per_day: bool
+    news_blackout_windows: list[str]
+    trailing_stop_enabled: bool
+    trailing_trigger_pct: float
+    trailing_distance_pct: float
+
+
+@dataclass(slots=True)
+class NewsCalendarConfig:
+    enabled: bool
+    provider: str
+    api_key: str
+    countries: list[str]
+    importance: int
+    pre_blackout_minutes: int
+    post_blackout_minutes: int
+    lookahead_days: int
+    cache_minutes: int
+    request_timeout_seconds: int
+    common_filename: str
+    file_path: str
 
 
 @dataclass(slots=True)
@@ -94,6 +117,7 @@ class AppConfig:
     strategy: StrategyConfig
     backtest: BacktestConfig
     safety: SafetyConfig
+    news_calendar: NewsCalendarConfig
     reporting: ReportingConfig
 
 
@@ -120,6 +144,7 @@ def load_config(path: str | Path) -> AppConfig:
     strategy = _required(raw, "strategy")
     backtest = raw.get("backtest", {})
     safety = raw.get("safety", {})
+    news_calendar = raw.get("news_calendar", {})
     reporting = raw.get("reporting", {})
 
     cfg = AppConfig(
@@ -169,6 +194,25 @@ def load_config(path: str | Path) -> AppConfig:
             trading_windows=[str(value) for value in safety.get("trading_windows", ["14:00-02:00"])],
             max_daily_loss_pct=float(safety.get("max_daily_loss_pct", 0.02)),
             max_consecutive_losses=int(safety.get("max_consecutive_losses", 3)),
+            one_direction_per_day=bool(safety.get("one_direction_per_day", True)),
+            news_blackout_windows=[str(value) for value in safety.get("news_blackout_windows", [])],
+            trailing_stop_enabled=bool(safety.get("trailing_stop_enabled", True)),
+            trailing_trigger_pct=float(safety.get("trailing_trigger_pct", 0.0015)),
+            trailing_distance_pct=float(safety.get("trailing_distance_pct", 0.0012)),
+        ),
+        news_calendar=NewsCalendarConfig(
+            enabled=bool(news_calendar.get("enabled", False)),
+            provider=str(news_calendar.get("provider", "mt5_file")).lower(),
+            api_key=str(news_calendar.get("api_key", "guest:guest")),
+            countries=[str(value) for value in news_calendar.get("countries", ["united states"])],
+            importance=int(news_calendar.get("importance", 3)),
+            pre_blackout_minutes=int(news_calendar.get("pre_blackout_minutes", 10)),
+            post_blackout_minutes=int(news_calendar.get("post_blackout_minutes", 10)),
+            lookahead_days=int(news_calendar.get("lookahead_days", 7)),
+            cache_minutes=int(news_calendar.get("cache_minutes", 30)),
+            request_timeout_seconds=int(news_calendar.get("request_timeout_seconds", 20)),
+            common_filename=str(news_calendar.get("common_filename", "mt5_calendar_events.csv")),
+            file_path=str(news_calendar.get("file_path", "")),
         ),
         reporting=ReportingConfig(
             output_dir=str(reporting.get("output_dir", "reports")),
@@ -203,5 +247,26 @@ def load_config(path: str | Path) -> AppConfig:
 
     if cfg.safety.max_consecutive_losses < 1:
         raise ConfigError("safety.max_consecutive_losses must be at least 1.")
+
+    if not 0 <= cfg.safety.trailing_trigger_pct < 1:
+        raise ConfigError("safety.trailing_trigger_pct must be between 0 and 1.")
+
+    if not 0 <= cfg.safety.trailing_distance_pct < 1:
+        raise ConfigError("safety.trailing_distance_pct must be between 0 and 1.")
+
+    if cfg.news_calendar.provider not in {"disabled", "tradingeconomics", "mt5_file"}:
+        raise ConfigError("news_calendar.provider must be one of: disabled, tradingeconomics, mt5_file.")
+
+    if cfg.news_calendar.enabled:
+        if cfg.news_calendar.importance not in {1, 2, 3}:
+            raise ConfigError("news_calendar.importance must be 1, 2, or 3.")
+        if cfg.news_calendar.pre_blackout_minutes < 0 or cfg.news_calendar.post_blackout_minutes < 0:
+            raise ConfigError("news blackout minutes must be greater than or equal to 0.")
+        if cfg.news_calendar.lookahead_days < 1:
+            raise ConfigError("news_calendar.lookahead_days must be at least 1.")
+        if cfg.news_calendar.cache_minutes < 1:
+            raise ConfigError("news_calendar.cache_minutes must be at least 1.")
+        if cfg.news_calendar.request_timeout_seconds < 1:
+            raise ConfigError("news_calendar.request_timeout_seconds must be at least 1.")
 
     return cfg

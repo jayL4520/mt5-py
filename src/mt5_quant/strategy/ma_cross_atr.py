@@ -1,3 +1,5 @@
+"""通用双均线 ATR 策略。"""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -8,6 +10,7 @@ from mt5_quant.strategy.base import Strategy
 
 
 def _atr(data: pd.DataFrame, period: int) -> pd.Series:
+    """计算 ATR 指标。"""
     high_low = data["high"] - data["low"]
     high_close = (data["high"] - data["close"].shift(1)).abs()
     low_close = (data["low"] - data["close"].shift(1)).abs()
@@ -16,10 +19,12 @@ def _atr(data: pd.DataFrame, period: int) -> pd.Series:
 
 
 class MovingAverageAtrStrategy(Strategy):
+    """双均线交叉配合 ATR 止损的基础策略。"""
     def __init__(self, config: StrategyConfig) -> None:
         self.config = config
 
     def generate_signal(self, data: pd.DataFrame, position: Position | None) -> Signal:
+        """根据均线交叉和持仓状态生成交易动作。"""
         min_bars = max(self.config.long_window + 2, self.config.atr_period + 2)
         if len(data) < min_bars:
             return Signal(action="hold", reason="insufficient_bars")

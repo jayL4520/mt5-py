@@ -1,3 +1,5 @@
+"""命令行入口，负责回测与实盘模式分发。"""
+
 from __future__ import annotations
 
 import argparse
@@ -15,6 +17,7 @@ from mt5_quant.strategy import MovingAverageAtrStrategy, XauM1MomentumStrategy
 
 
 def configure_logging() -> None:
+    """统一日志输出格式。"""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -22,6 +25,7 @@ def configure_logging() -> None:
 
 
 def build_strategy(config: AppConfig):
+    """根据配置名称构造策略对象。"""
     if config.strategy.name == "ma_cross_atr":
         return MovingAverageAtrStrategy(config.strategy)
     if config.strategy.name == "xau_m1_momentum":
@@ -30,6 +34,7 @@ def build_strategy(config: AppConfig):
 
 
 def load_csv_history(path: str | Path) -> pd.DataFrame:
+    """从 CSV 读取历史 K 线。"""
     frame = pd.read_csv(path)
     required = {"time", "open", "high", "low", "close"}
     missing = required - set(frame.columns)
@@ -40,6 +45,7 @@ def load_csv_history(path: str | Path) -> pd.DataFrame:
 
 
 def export_backtest_report(result: dict[str, object], output_dir: str | Path, config: AppConfig) -> None:
+    """导出回测摘要、成交明细和净值曲线。"""
     path = Path(output_dir)
     path.mkdir(parents=True, exist_ok=True)
 
@@ -57,6 +63,7 @@ def export_backtest_report(result: dict[str, object], output_dir: str | Path, co
 
 
 def run_backtest(config: AppConfig, csv_path: str | None, bars: int | None, report_dir: str | None) -> None:
+    """执行回测流程。"""
     strategy = build_strategy(config)
     if csv_path:
         data = load_csv_history(csv_path)
@@ -76,12 +83,14 @@ def run_backtest(config: AppConfig, csv_path: str | None, bars: int | None, repo
 
 
 def run_live(config: AppConfig) -> None:
+    """执行实盘或模拟盘轮询流程。"""
     strategy = build_strategy(config)
     engine = LiveTradingEngine(config, strategy)
     engine.run()
 
 
 def main() -> None:
+    """程序主入口。"""
     configure_logging()
     parser = argparse.ArgumentParser(description="MT5 quantitative trading system")
     subparsers = parser.add_subparsers(dest="command", required=True)

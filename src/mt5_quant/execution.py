@@ -1,3 +1,5 @@
+"""下单、平仓与止损更新执行层。"""
+
 from __future__ import annotations
 
 import logging
@@ -10,6 +12,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ExecutionEngine:
+    """负责把策略动作转换成 MT5 交易请求。"""
     def __init__(self, config: AppConfig, gateway: Mt5Gateway) -> None:
         self.config = config
         self.gateway = gateway
@@ -21,6 +24,7 @@ class ExecutionEngine:
         stop_loss: float | None,
         take_profit: float | None,
     ) -> None:
+        """以市价开仓，并同时附带止盈止损。"""
         lib = self.gateway._require_mt5()
         tick = self.gateway.get_tick()
         symbol_info = self.gateway.get_symbol_info()
@@ -50,6 +54,7 @@ class ExecutionEngine:
         LOGGER.info("Opened %s %.2f lots on %s", side, volume, self.config.trading.symbol)
 
     def close_position(self, position: Position) -> None:
+        """以反向市价单平掉已有持仓。"""
         lib = self.gateway._require_mt5()
         tick = self.gateway.get_tick()
         symbol_info = self.gateway.get_symbol_info()
@@ -77,3 +82,33 @@ class ExecutionEngine:
             raise RuntimeError(f"Close position failed: {retcode}")
 
         LOGGER.info("Closed position %s on %s", position.ticket, position.symbol)
+
+    def update_position_stops(
+        self,
+        position: Position,
+        stop_loss: float | None,
+        take_profit: float | None,
+    ) -> None:
+        """更新已持仓的止损止盈。"""
+        lib = self.gateway._require_mt5()
+        symbol_info = self.gateway.get_symbol_info()
+
+        request = {
+            "action": lib.TRADE_ACTION_SLTP,
+            "position": position.ticket,
+            "symbol": position.symbol,
+            "sl": round(stop_loss, symbol_info.digits) if stop_loss is not None else 0.0,
+            "tp": round(take_profit, symbol_info.digits) if take_profit is not None else 0.0,
+        }
+
+        result = lib.order_send(request)
+        if result is None or result.retcode != lib.TRADE_RETCODE_DONE:
+            retcode = getattr(result, "retcode", "unknown")
+            raise RuntimeError(f"Update stops failed: {retcode}")
+
+        LOGGER.info(
+            "Updated stops for %s: sl=%s tp=%s",
+            position.ticket,
+            request["sl"],
+            request["tp"],
+        )

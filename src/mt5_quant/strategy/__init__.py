@@ -1,3 +1,5 @@
+"""策略导出入口。"""
+
 from mt5_quant.strategy.ma_cross_atr import MovingAverageAtrStrategy
 from mt5_quant.strategy.xau_m1_momentum import XauM1MomentumStrategy
 

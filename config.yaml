@@ -1,32 +1,131 @@
+# MT5 连接配置
 mt5:
+  # MT5 登录账号
   login: 5050445394
+  # MT5 登录密码
   password: "UuVy*b7g"
+  # MT5 服务器名称
   server: "MetaQuotes-Demo"
+  # MT5 客户端路径，留空表示使用默认安装位置
   path: ""
+  # 初始化连接超时时间，单位毫秒
   timeout: 60000
+  # 是否使用 portable 模式启动 MT5
   portable: false
 
+# 交易运行配置
 trading:
+  # 交易品种
   symbol: "XAUUSD"
+  # 交易周期
   timeframe: "M1"
+  # 每次拉取的历史 K 线数量
   history_bars: 800
+  # 下单允许的最大滑点，单位 points
   slippage_points: 20
+  # 策略魔术号，用于区分本系统订单
   magic_number: 260516
+  # 订单备注
   comment: "ma-cross-atr"
+  # 轮询最新 K 线的间隔秒数
   poll_interval_seconds: 5
+  # 最大同时持仓数
   max_open_positions: 1
 
+# 策略参数配置
 strategy:
+  # 策略名称
   name: "ma_cross_atr"
+  # 短均线周期
   short_window: 20
+  # 长均线周期
   long_window: 50
+  # ATR 周期
   atr_period: 14
+  # ATR 止损倍数
   atr_stop_multiple: 2.0
+  # 固定盈亏比
   reward_to_risk: 2.0
+  # 单笔风险占净值比例
   risk_per_trade: 0.02
+  # 以下参数给 XAU M1 动量策略保留，当前均线 ATR 策略不会使用
+  ema_fast: 21
+  ema_slow: 55
+  rsi_period: 14
+  rsi_buy_threshold: 56
+  rsi_sell_threshold: 44
+  breakout_lookback: 18
+  take_profit_pct: 0.003
+  stop_loss_pct: 0.004
 
+# 回测参数配置
 backtest:
+  # 回测初始资金
   initial_balance: 100000
+  # 每手手续费
   commission_per_lot: 0.0
+  # 模拟点差，单位 points
   spread_points: 10
+  # 合约乘数，按券商实际品种调整
   contract_size: 1.0
+
+# 安全与风控配置
+safety:
+  # 风控使用的本地时区
+  timezone: "Asia/Shanghai"
+  # 允许开新仓的交易时段，支持跨天
+  trading_windows:
+    - "14:00-02:00"
+  # 当日最大亏损比例，到达后停止开新仓
+  max_daily_loss_pct: 0.02
+  # 连续亏损达到该次数后停止开新仓
+  max_consecutive_losses: 3
+  # 是否限制日内只做一个方向
+  one_direction_per_day: true
+  # 手工指定的新闻黑窗
+  news_blackout_windows: []
+  # 是否启用移动止损
+  trailing_stop_enabled: true
+  # 浮盈达到该比例后开始上移止损
+  trailing_trigger_pct: 0.0015
+  # 止损跟随当前价格的距离比例
+  trailing_distance_pct: 0.0012
+
+# 自动财经日历配置
+news_calendar:
+  # 是否启用自动财经日历
+  enabled: true
+  # 日历提供方
+  provider: "mt5_file"
+  # 外部 API 凭证，仅在 provider=tradingeconomics 时使用
+  api_key: "guest:guest"
+  # 关注的国家列表
+  countries:
+    - "united states"
+  # 新闻重要性，1=低，2=中，3=高
+  importance: 3
+  # 新闻发布时间前多少分钟开始禁开仓
+  pre_blackout_minutes: 10
+  # 新闻发布时间后多少分钟结束禁开仓
+  post_blackout_minutes: 10
+  # 向前拉取未来多少天的财经日历
+  lookahead_days: 7
+  # 本地缓存分钟数
+  cache_minutes: 30
+  # 单次请求超时秒数
+  request_timeout_seconds: 20
+  # 当 provider=mt5_file 时，默认从 MT5 Common\Files 下读取该文件名
+  common_filename: "mt5_calendar_events.csv"
+  # 如果想手工指定绝对路径，可填这里；留空则自动解析 Common\Files
+  file_path: ""
+
+# 回测报表输出配置
+reporting:
+  # 报表输出目录
+  output_dir: "reports/default"
+  # 是否导出 summary.json
+  save_summary_json: true
+  # 是否导出 trades.csv
+  save_trades_csv: true
+  # 是否导出 equity_curve.csv
+  save_equity_csv: true

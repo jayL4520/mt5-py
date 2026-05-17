@@ -1,11 +1,22 @@
 # MT5 连接配置
 mt5:
+
+  #账户1
+  # # MT5 登录账号
+  # login: 5050445394
+  # # MT5 登录密码
+  # password: "UuVy*b7g"
+  # # MT5 服务器名称
+  # server: "MetaQuotes-Demo"
+
+  #账户2
   # MT5 登录账号
-  login: 12345678
+  login: 277679314
   # MT5 登录密码
-  password: "your-password"
+  password: "!1qaz2wsxQ"
   # MT5 服务器名称
-  server: "Broker-Demo"
+  server: "Exness-MT5Trial5"
+
   # MT5 客户端路径，留空表示使用默认安装位置
   path: ""
   # 初始化连接超时时间，单位毫秒
@@ -15,8 +26,12 @@ mt5:
 
 # 交易运行配置
 trading:
+
+ # #账户1 交易品种
+  # symbol: "XAUUSD"
+
   # 交易品种
-  symbol: "XAUUSD"
+  symbol: "XAUUSDm"
   # 交易周期
   timeframe: "M1"
   # 每次拉取的历史 K 线数量
@@ -64,7 +79,7 @@ strategy:
 # 回测参数配置
 backtest:
   # 回测初始资金
-  initial_balance: 100000
+  initial_balance: 110000
   # 每手手续费
   commission_per_lot: 0.0
   # 模拟点差，单位 points
@@ -83,16 +98,16 @@ safety:
   max_daily_loss_pct: 0.02
   # 连续亏损达到该次数后停止开新仓
   max_consecutive_losses: 3
-  # 是否限制日内只做一个方向
-  one_direction_per_day: true
+  # 是否限制日内只做一个方向，true 表示当天先做多后不再做空
+  one_direction_per_day: false
   # 手工指定的新闻黑窗，格式为 开始时间/结束时间，使用本地时区
   news_blackout_windows:
     - "2026-05-18 20:25/2026-05-18 20:45"
   # 是否启用移动止损
   trailing_stop_enabled: true
-  # 浮盈达到该比例后开始上移止损
+  # 浮盈达到该比例后开始上移止损，0.0015 = 0.15%
   trailing_trigger_pct: 0.0015
-  # 止损跟随当前价格的距离比例
+  # 止损跟随当前价格的距离比例，0.0012 = 0.12%
   trailing_distance_pct: 0.0012
 
 # 自动财经日历配置
@@ -126,7 +141,8 @@ news_calendar:
 # 回测报表输出配置
 reporting:
   # 报表输出目录
-  output_dir: "reports/xauusd_m1"
+  # output_dir: "reports/xauusd_m1"
+  output_dir: "reports/xauusdm_m1"
   # 是否导出 summary.json
   save_summary_json: true
   # 是否导出 trades.csv

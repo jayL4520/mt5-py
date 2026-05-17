@@ -1,3 +1,5 @@
+"""MT5 数据访问层。"""
+
 from __future__ import annotations
 
 import logging
@@ -22,6 +24,7 @@ class Mt5UnavailableError(RuntimeError):
 
 
 class Mt5Gateway:
+    """对 MetaTrader5 Python 接口做轻量封装。"""
     def __init__(self, config: AppConfig) -> None:
         self.config = config
 
@@ -31,6 +34,7 @@ class Mt5Gateway:
         return mt5
 
     def connect(self) -> None:
+        """初始化 MT5 并选中交易品种。"""
         lib = self._require_mt5()
         kwargs = {
             "login": self.config.mt5.login,
@@ -63,6 +67,7 @@ class Mt5Gateway:
         return getattr(lib, TIMEFRAME_ALIASES[self.config.trading.timeframe])
 
     def get_rates(self, bars: int | None = None) -> pd.DataFrame:
+        """获取历史 K 线并转成 DataFrame。"""
         lib = self._require_mt5()
         bars = bars or self.config.trading.history_bars
         rates = lib.copy_rates_from_pos(self.config.trading.symbol, self.timeframe(), 0, bars)
@@ -75,6 +80,7 @@ class Mt5Gateway:
         return frame.set_index("time")
 
     def get_positions(self) -> list[Position]:
+        """读取当前策略名下的持仓。"""
         lib = self._require_mt5()
         raw_positions = lib.positions_get(symbol=self.config.trading.symbol) or []
         positions: list[Position] = []
@@ -118,6 +124,7 @@ class Mt5Gateway:
         return info
 
     def order_calc_loss_per_lot(self, side: str, entry: float, stop_loss: float) -> float:
+        """估算 1 手仓位从开仓价打到止损价的亏损。"""
         lib = self._require_mt5()
         order_type = lib.ORDER_TYPE_BUY if side == "buy" else lib.ORDER_TYPE_SELL
         result = lib.order_calc_profit(order_type, self.config.trading.symbol, 1.0, entry, stop_loss)
@@ -125,10 +132,11 @@ class Mt5Gateway:
             return 0.0
         return abs(float(result))
 
-    def get_deals_range(self, date_from: datetime, date_to: datetime) -> list[dict[str, float | int]]:
+    def get_deals_range(self, date_from: datetime, date_to: datetime) -> list[dict[str, float | int | str]]:
+        """读取某个时间区间内的历史成交。"""
         lib = self._require_mt5()
         raw_deals = lib.history_deals_get(date_from, date_to) or []
-        deals: list[dict[str, float | int]] = []
+        deals: list[dict[str, float | int | str]] = []
         for deal in raw_deals:
             if getattr(deal, "symbol", "") != self.config.trading.symbol:
                 continue
@@ -137,11 +145,14 @@ class Mt5Gateway:
             profit = float(getattr(deal, "profit", 0.0))
             commission = float(getattr(deal, "commission", 0.0))
             swap = float(getattr(deal, "swap", 0.0))
+            deal_type = int(getattr(deal, "type", -1))
+            side = "buy" if deal_type == lib.DEAL_TYPE_BUY else "sell" if deal_type == lib.DEAL_TYPE_SELL else "unknown"
             deals.append(
                 {
                     "ticket": int(getattr(deal, "ticket", 0)),
                     "time": int(getattr(deal, "time", 0)),
                     "entry": int(getattr(deal, "entry", -1)),
+                    "side": side,
                     "pnl": profit + commission + swap,
                 }
             )

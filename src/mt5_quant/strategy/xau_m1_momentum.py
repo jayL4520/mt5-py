@@ -1,3 +1,5 @@
+"""XAUUSD M1 趋势突破动量策略。"""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -8,10 +10,12 @@ from mt5_quant.strategy.base import Strategy
 
 
 def _ema(series: pd.Series, period: int) -> pd.Series:
+    """计算指数移动平均线。"""
     return series.ewm(span=period, adjust=False).mean()
 
 
 def _rsi(series: pd.Series, period: int) -> pd.Series:
+    """计算 RSI 动量指标。"""
     delta = series.diff()
     gain = delta.clip(lower=0.0)
     loss = -delta.clip(upper=0.0)
@@ -22,10 +26,12 @@ def _rsi(series: pd.Series, period: int) -> pd.Series:
 
 
 class XauM1MomentumStrategy(Strategy):
+    """适配黄金 1 分钟周期的趋势突破策略。"""
     def __init__(self, config: StrategyConfig) -> None:
         self.config = config
 
     def generate_signal(self, data: pd.DataFrame, position: Position | None) -> Signal:
+        """根据趋势、突破和动量共同决定开平仓。"""
         min_bars = max(self.config.ema_slow + 3, self.config.rsi_period + 3, self.config.breakout_lookback + 3)
         if len(data) < min_bars:
             return Signal(action="hold", reason="insufficient_bars")

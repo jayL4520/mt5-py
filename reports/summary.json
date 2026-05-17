@@ -1,0 +1,23 @@
+{
+  "final_balance": 94840.15102521986,
+  "net_profit": -5159.848974780136,
+  "total_trades": 7,
+  "win_rate": 0.2857142857142857,
+  "gross_profit": 4907.234608184328,
+  "gross_loss": -10067.08358296446,
+  "avg_trade": -737.121282111448,
+  "avg_win": 2453.617304092164,
+  "avg_loss": -2013.416716592892,
+  "profit_factor": 0.4874534484335027,
+  "max_drawdown_pct": 0.0782081930973954,
+  "blocked_entries": {
+    "outside_trading_window": 34,
+    "daily_loss_limit_reached": 18,
+    "one_direction_per_day": 5,
+    "ok": 5,
+    "consecutive_loss_limit_reached": 7
+  },
+  "symbol": "XAUUSD",
+  "timeframe": "M1",
+  "strategy": "ma_cross_atr"
+}
