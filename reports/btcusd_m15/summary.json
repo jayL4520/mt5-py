@@ -1,0 +1,17 @@
+{
+  "final_balance": 97026.33947312883,
+  "net_profit": -2973.660526871172,
+  "total_trades": 48,
+  "win_rate": 0.3333333333333333,
+  "gross_profit": 7796.855971944871,
+  "gross_loss": -10770.516498816025,
+  "avg_trade": -61.95126097648275,
+  "avg_win": 487.30349824655445,
+  "avg_loss": -336.5786405880008,
+  "profit_factor": 0.7239073421225397,
+  "max_drawdown_pct": 0.04344257070370068,
+  "blocked_entries": {},
+  "symbol": "BTCUSDm",
+  "timeframe": "M15",
+  "strategy": "btc_m15_regime"
+}

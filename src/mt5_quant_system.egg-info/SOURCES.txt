@@ -6,12 +6,16 @@ src/mt5_quant/cli.py
 src/mt5_quant/config.py
 src/mt5_quant/data.py
 src/mt5_quant/execution.py
+src/mt5_quant/guardrails.py
 src/mt5_quant/live.py
 src/mt5_quant/models.py
+src/mt5_quant/news_calendar.py
 src/mt5_quant/risk.py
 src/mt5_quant/strategy/__init__.py
 src/mt5_quant/strategy/base.py
+src/mt5_quant/strategy/btc_m15_regime.py
 src/mt5_quant/strategy/ma_cross_atr.py
+src/mt5_quant/strategy/xau_m1_momentum.py
 src/mt5_quant_system.egg-info/PKG-INFO
 src/mt5_quant_system.egg-info/SOURCES.txt
 src/mt5_quant_system.egg-info/dependency_links.txt

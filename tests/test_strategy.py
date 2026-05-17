@@ -7,6 +7,7 @@ import pandas as pd
 from mt5_quant.config import SafetyConfig, StrategyConfig
 from mt5_quant.guardrails import RiskSnapshot, SafetyGuard
 from mt5_quant.models import Position
+from mt5_quant.strategy.btc_m15_regime import BtcM15RegimeStrategy
 from mt5_quant.strategy.ma_cross_atr import MovingAverageAtrStrategy
 from mt5_quant.strategy.xau_m1_momentum import XauM1MomentumStrategy
 from mt5_quant.backtest import BacktestEngine
@@ -37,6 +38,11 @@ def test_ma_cross_strategy_emits_action() -> None:
         breakout_lookback=20,
         take_profit_pct=0.003,
         stop_loss_pct=0.004,
+        adx_period=14,
+        adx_threshold=22.0,
+        volume_window=20,
+        volume_multiplier=1.0,
+        breakout_buffer_pct=0.0,
     )
     strategy = MovingAverageAtrStrategy(config)
     signal = strategy.generate_signal(data, position=None)
@@ -73,8 +79,52 @@ def test_xau_m1_strategy_returns_valid_signal() -> None:
         breakout_lookback=6,
         take_profit_pct=0.003,
         stop_loss_pct=0.004,
+        adx_period=14,
+        adx_threshold=22.0,
+        volume_window=20,
+        volume_multiplier=1.0,
+        breakout_buffer_pct=0.0,
     )
     strategy = XauM1MomentumStrategy(config)
+    signal = strategy.generate_signal(data, position=None)
+    assert signal.action in {"buy", "sell", "hold"}
+
+
+def test_btc_m15_strategy_returns_valid_signal() -> None:
+    close = [50000 + index * 40 for index in range(120)]
+    volume = [100 + (index % 10) * 5 for index in range(120)]
+    data = pd.DataFrame(
+        {
+            "open": close,
+            "high": [value + 60 for value in close],
+            "low": [value - 60 for value in close],
+            "close": close,
+            "volume": volume,
+        }
+    )
+    config = StrategyConfig(
+        name="btc_m15_regime",
+        short_window=20,
+        long_window=50,
+        atr_period=14,
+        atr_stop_multiple=2.0,
+        reward_to_risk=2.2,
+        risk_per_trade=0.004,
+        ema_fast=10,
+        ema_slow=20,
+        rsi_period=7,
+        rsi_buy_threshold=55.0,
+        rsi_sell_threshold=45.0,
+        breakout_lookback=10,
+        take_profit_pct=0.02,
+        stop_loss_pct=0.01,
+        adx_period=7,
+        adx_threshold=18.0,
+        volume_window=5,
+        volume_multiplier=0.8,
+        breakout_buffer_pct=0.0,
+    )
+    strategy = BtcM15RegimeStrategy(config)
     signal = strategy.generate_signal(data, position=None)
     assert signal.action in {"buy", "sell", "hold"}
 

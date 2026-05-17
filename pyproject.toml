@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mt5-quant-system"
-version = "0.1.0"
+version = "1.0.1"
 description = "A Python-based quantitative trading system for MetaTrader 5."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0"]
+build = ["pyinstaller>=6.0.0"]
 
 [project.scripts]
 mt5-quant = "mt5_quant.cli:main"

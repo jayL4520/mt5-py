@@ -63,6 +63,11 @@ class StrategyConfig:
     breakout_lookback: int
     take_profit_pct: float
     stop_loss_pct: float
+    adx_period: int
+    adx_threshold: float
+    volume_window: int
+    volume_multiplier: float
+    breakout_buffer_pct: float
 
 
 @dataclass(slots=True)
@@ -182,6 +187,11 @@ def load_config(path: str | Path) -> AppConfig:
             breakout_lookback=int(strategy.get("breakout_lookback", 20)),
             take_profit_pct=float(strategy.get("take_profit_pct", 0.003)),
             stop_loss_pct=float(strategy.get("stop_loss_pct", 0.004)),
+            adx_period=int(strategy.get("adx_period", 14)),
+            adx_threshold=float(strategy.get("adx_threshold", 22.0)),
+            volume_window=int(strategy.get("volume_window", 20)),
+            volume_multiplier=float(strategy.get("volume_multiplier", 1.0)),
+            breakout_buffer_pct=float(strategy.get("breakout_buffer_pct", 0.0)),
         ),
         backtest=BacktestConfig(
             initial_balance=float(backtest.get("initial_balance", 100000)),
@@ -241,6 +251,24 @@ def load_config(path: str | Path) -> AppConfig:
             raise ConfigError("strategy.stop_loss_pct must be between 0 and 1.")
         if cfg.strategy.rsi_sell_threshold >= cfg.strategy.rsi_buy_threshold:
             raise ConfigError("strategy.rsi_sell_threshold must be smaller than strategy.rsi_buy_threshold.")
+
+    if cfg.strategy.name == "btc_m15_regime":
+        if cfg.strategy.ema_fast >= cfg.strategy.ema_slow:
+            raise ConfigError("strategy.ema_fast must be smaller than strategy.ema_slow.")
+        if cfg.strategy.adx_period < 2:
+            raise ConfigError("strategy.adx_period must be at least 2.")
+        if cfg.strategy.adx_threshold <= 0:
+            raise ConfigError("strategy.adx_threshold must be greater than 0.")
+        if cfg.strategy.volume_window < 1:
+            raise ConfigError("strategy.volume_window must be at least 1.")
+        if cfg.strategy.volume_multiplier < 0:
+            raise ConfigError("strategy.volume_multiplier must be greater than or equal to 0.")
+        if cfg.strategy.breakout_buffer_pct < 0:
+            raise ConfigError("strategy.breakout_buffer_pct must be greater than or equal to 0.")
+        if cfg.strategy.atr_stop_multiple <= 0:
+            raise ConfigError("strategy.atr_stop_multiple must be greater than 0.")
+        if cfg.strategy.reward_to_risk <= 0:
+            raise ConfigError("strategy.reward_to_risk must be greater than 0.")
 
     if not 0 <= cfg.safety.max_daily_loss_pct < 1:
         raise ConfigError("safety.max_daily_loss_pct must be between 0 and 1.")

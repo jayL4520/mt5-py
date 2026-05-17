@@ -9,11 +9,12 @@ from pathlib import Path
 
 import pandas as pd
 
+from mt5_quant import __version__
 from mt5_quant.backtest import BacktestEngine
 from mt5_quant.config import AppConfig, load_config
 from mt5_quant.data import Mt5Gateway
 from mt5_quant.live import LiveTradingEngine
-from mt5_quant.strategy import MovingAverageAtrStrategy, XauM1MomentumStrategy
+from mt5_quant.strategy import BtcM15RegimeStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
 
 
 def configure_logging() -> None:
@@ -30,6 +31,8 @@ def build_strategy(config: AppConfig):
         return MovingAverageAtrStrategy(config.strategy)
     if config.strategy.name == "xau_m1_momentum":
         return XauM1MomentumStrategy(config.strategy)
+    if config.strategy.name == "btc_m15_regime":
+        return BtcM15RegimeStrategy(config.strategy)
     raise ValueError(f"Unsupported strategy: {config.strategy.name}")
 
 
@@ -92,7 +95,7 @@ def run_live(config: AppConfig) -> None:
 def main() -> None:
     """程序主入口。"""
     configure_logging()
-    parser = argparse.ArgumentParser(description="MT5 quantitative trading system")
+    parser = argparse.ArgumentParser(description=f"MT5 quantitative trading system v{__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     backtest_parser = subparsers.add_parser("backtest", help="Run a local backtest")
@@ -116,3 +119,7 @@ def main() -> None:
         return
 
     raise ValueError(f"Unhandled command: {args.command}")
+
+
+if __name__ == "__main__":
+    main()

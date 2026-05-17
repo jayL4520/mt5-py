@@ -1,2 +1,11 @@
 /.venv
 /.cvenv
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+reports/

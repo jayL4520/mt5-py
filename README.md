@@ -1,235 +1,233 @@
 # MT5 量化交易系统
 
-这是一个基于 `Python + MetaTrader 5` 的量化交易系统骨架，当前已经围绕 `XAUUSD / M1` 做了专门增强，适合先跑模拟盘，再逐步推进到半自动或全自动实盘。
+当前代码版本：`1.0.1`
 
-## 一、系统能力
+这是一个基于 `Python + MetaTrader 5` 的量化交易系统。  
+目前已经包含两条可直接使用的专用品种方案：
 
-- 连接 MT5 终端并获取账户、持仓、历史 K 线
-- 支持策略信号、风控、仓位计算、下单执行
-- 支持 `XAUUSD / M1` 趋势突破动量策略
-- 支持固定百分比止盈止损
-- 支持移动止损
-- 支持交易时段过滤
-- 支持日内最大亏损熔断
-- 支持连续亏损熔断
-- 支持“日内只做一个方向”开关
-- 支持手工新闻黑窗
-- 支持 MT5 自带经济日历自动生成新闻黑窗
-- 支持外部财经日历作为备用来源
-- 支持本地回测与报表导出
+- `1.0.0`：`XAUUSD / M1` 黄金专用版
+- `1.0.1`：在 `1.0.0` 基础上新增 `BTCUSD / M15` 比特币专用策略
 
-## 二、当前默认交易逻辑
+## 一、版本说明
 
-默认策略为 `xau_m1_momentum`，主要逻辑如下：
+### 1.0.0
 
-### 1. 入场
+这是第一版黄金专用版，重点是把 `XAUUSD / M1` 做成可直接运行、可回测、可接 MT5 的版本。
 
-- 快速 EMA 在慢速 EMA 上方，视为多头趋势
-- 收盘价向上突破最近一段时间高点
-- RSI 高于多头阈值
-- 满足以上条件后开多
+已完成：
 
-- 快速 EMA 在慢速 EMA 下方，视为空头趋势
-- 收盘价向下跌破最近一段时间低点
-- RSI 低于空头阈值
-- 满足以上条件后开空
+- 黄金专用策略 `xau_m1_momentum`
+- 风控、仓位、执行、回测
+- 交易时段过滤
+- 日内最大亏损熔断
+- 连续亏损熔断
+- 日内单方向开关
+- 新闻黑窗
+- MT5 自带经济日历自动黑窗
+- 中文配置说明
+- 中文代码注释
+- `exe` 打包支持
 
-### 2. 出场
+### 1.0.1
 
-- 固定止盈：`+0.3%`
-- 固定止损：`-0.4%`
-- 动量衰减或趋势反转时提前平仓
-- 浮盈达到阈值后启动移动止损
+这是策略扩展版，新增 `BTCUSD` 专业策略并融入原系统。
+
+已完成：
+
+- 新增 `btc_m15_regime` 策略
+- 新增 BTC 示例配置
+- BTC 接入同一套风控、回测、实盘和报表系统
+- 项目版本升级到 `1.0.1`
+
+## 二、当前支持的策略
+
+### 1. 黄金策略：`xau_m1_momentum`
+
+适用品种：
+
+- `XAUUSD`
+- 默认周期：`M1`
+
+逻辑核心：
+
+- EMA 趋势过滤
+- 突破确认
+- RSI 动量确认
+- 固定百分比止盈止损
+- 移动止损
+
+推荐配置文件：
+
+- [config.xauusd.m1.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\config.xauusd.m1.yaml)
+
+### 2. BTC 策略：`btc_m15_regime`
+
+适用品种：
+
+- `BTCUSD`
+- 默认周期：`M15`
+
+逻辑核心：
+
+- EMA 快慢线识别趋势状态
+- ADX 判断趋势是否足够强
+- Donchian Breakout 判断关键区间突破
+- RSI 做动量确认
+- Volume Mean 过滤低质量突破
+- ATR 动态止损 + 固定收益风险比止盈
+
+推荐配置文件：
+
+- [config.btcusd.m15.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\config.btcusd.m15.yaml)
 
 ## 三、项目结构
 
 ```text
 src/mt5_quant/
-  backtest.py          # 回测引擎
-  cli.py               # 命令行入口
-  config.py            # 配置加载
-  data.py              # MT5 数据访问
-  execution.py         # 下单与改止损
-  guardrails.py        # 时段、新闻、方向、熔断守卫
-  live.py              # 实盘轮询引擎
-  models.py            # 通用数据模型
-  news_calendar.py     # 自动财经日历
-  risk.py              # 仓位计算
+  backtest.py
+  cli.py
+  config.py
+  data.py
+  execution.py
+  guardrails.py
+  live.py
+  models.py
+  news_calendar.py
+  risk.py
   strategy/
     base.py
     ma_cross_atr.py
     xau_m1_momentum.py
+    btc_m15_regime.py
+
 mql5/
-  ExportEconomicCalendar.mq5  # MT5 经济日历导出器
+  ExportEconomicCalendar.mq5
+
+build_exe.ps1
+mt5_quant.spec
+RELEASE_NOTES.md
 ```
 
 ## 四、安装
+
+### 1. 普通安装
 
 ```bash
 pip install -e .
 ```
 
-如果只想直接运行，也可以自行安装依赖：
+### 2. 带打包依赖安装
 
 ```bash
-pip install MetaTrader5 pandas numpy PyYAML
+pip install -e .[build]
 ```
 
-## 五、配置文件说明
+## 五、运行方式
 
-建议优先使用：
-
-- [config.xauusd.m1.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\config.xauusd.m1.yaml)
-
-目前我已经把所有配置文件都加了中文备注，后续你可以直接边看边改。
-
-### 重点配置
-
-- `strategy.risk_per_trade`
-  含义：单笔最大风险占净值比例
-
-- `safety.one_direction_per_day`
-  含义：是否限制同一天只做一个方向
-  示例：当天先开多后，不再允许开空
-
-- `safety.news_blackout_windows`
-  含义：手工新闻黑窗
-  格式：`YYYY-MM-DD HH:MM/YYYY-MM-DD HH:MM`
-
-- `news_calendar.enabled`
-  含义：是否启用自动财经日历
-
-- `news_calendar.provider`
-  含义：自动财经日历提供方
-  当前支持：`disabled`、`mt5_file`、`tradingeconomics`
-
-- `news_calendar.countries`
-  含义：重点关注的国家列表
-  `XAUUSD` 默认重点关注 `united states`
-
-- `news_calendar.importance`
-  含义：新闻重要性等级
-  `1=低`、`2=中`、`3=高`
-
-- `safety.trailing_trigger_pct`
-  含义：浮盈达到多少比例后启动移动止损
-
-- `safety.trailing_distance_pct`
-  含义：移动止损距离当前价格的比例
-
-## 六、运行方式
-
-### 1. 回测
+### 1. 黄金回测
 
 ```bash
 mt5-quant backtest --config config.xauusd.m1.yaml --bars 5000
 ```
 
-如果需要把回测结果导出到指定目录：
-
-```bash
-mt5-quant backtest --config config.xauusd.m1.yaml --bars 5000 --report-dir reports\run_002
-```
-
-### 2. 实盘或模拟盘运行
+### 2. 黄金实盘或模拟盘
 
 ```bash
 mt5-quant live --config config.xauusd.m1.yaml
 ```
 
-## 七、自动财经日历说明
+### 3. BTC 回测
 
-当前版本支持自动从财经日历接口读取高影响事件，并自动生成新闻黑窗。
+```bash
+mt5-quant backtest --config config.btcusd.m15.yaml --bars 5000
+```
 
-### 默认工作方式（推荐）
+### 4. BTC 实盘或模拟盘
 
-1. 系统按配置从外部财经日历读取未来若干天的重要事件
-2. 按 `pre_blackout_minutes` 和 `post_blackout_minutes` 自动扩展为禁开仓时间窗
-3. 到达这些时间窗时，系统只禁止“开新仓”，不会强制平已有仓位
-4. 若接口读取失败，系统自动退回到手工配置的新闻黑窗，不会中断主流程
+```bash
+mt5-quant live --config config.btcusd.m15.yaml
+```
 
-当前默认已经改成 `MT5 自带经济日历 -> MQL5 导出 CSV -> Python 自动读取`。
+## 六、打包 EXE
 
-### MT5 官方日历接入步骤
+当前版本已经加好打包工具，可以直接打包成 `exe`。
 
-1. 打开 [mql5/ExportEconomicCalendar.mq5](C:\Users\A\Documents\Codex\2026-05-14\mt5\mql5\ExportEconomicCalendar.mq5)
-2. 把文件放到 MT5 的 `MQL5\Experts` 目录
-3. 在 MT5 中编译并挂到任意图表
-4. 保持 MT5 在线，EA 会定时把事件导出到 `Common\Files\mt5_calendar_events.csv`
-5. Python 侧默认会自动读取这个文件，无需再改绝对路径
+### 打包前准备
 
-### 备用来源
+先安装打包依赖：
 
-- `TradingEconomics` 官方接口
-- 仅当你有可用 API 凭证时建议启用
-- 当前配置默认不再依赖它
+```bash
+pip install -e .[build]
+```
 
-### 默认过滤逻辑
+### 开始打包
 
-- 国家：`united states`
-- 重要性：`3`（高影响）
-- 黑窗：新闻前 `10` 分钟，后 `10` 分钟
+在项目根目录运行：
 
-### 配置建议
+```powershell
+.\build_exe.ps1
+```
 
-- 如果使用 MT5 官方日历：
-  `news_calendar.provider: "mt5_file"`
-- 如果使用外部接口：
-  `news_calendar.provider: "tradingeconomics"`
-- 如果完全禁用自动日历：
-  `news_calendar.enabled: false`
+### 打包结果
 
-## 八、风控守卫说明
+打包完成后会在 `dist` 目录生成：
 
-系统当前已支持以下守卫：
+- `mt5-quant.exe`
 
-- 交易时段过滤
-- 日内最大亏损熔断
-- 连续亏损熔断
-- 日内只做一个方向
-- 手工新闻黑窗
-- 自动财经日历黑窗
-- 移动止损
+同时 `spec` 文件会把这些资源一起带上：
 
-## 九、回测报表
+- `README.md`
+- `config.example.yaml`
+- `config.xauusd.m1.yaml`
+- `config.btcusd.m15.yaml`
+- `mql5/ExportEconomicCalendar.mq5`
 
-回测完成后会导出：
+## 七、自动财经日历
+
+默认推荐使用 `MT5 自带经济日历`：
+
+- 由 [ExportEconomicCalendar.mq5](C:\Users\A\Documents\Codex\2026-05-14\mt5\mql5\ExportEconomicCalendar.mq5) 导出
+- Python 自动读取 `Common\Files\mt5_calendar_events.csv`
+
+### 接入步骤
+
+1. 把 `ExportEconomicCalendar.mq5` 放到 MT5 的 `MQL5\Experts`
+2. 在 MT5 中编译
+3. 挂到任意图表
+4. 保持 MT5 在线
+5. Python 侧会自动读取导出的新闻事件
+
+## 八、配置说明
+
+我已经把主要配置文件都改成了中文备注版：
+
+- [config.example.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\config.example.yaml)
+- [config.xauusd.m1.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\config.xauusd.m1.yaml)
+- [config.btcusd.m15.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\config.btcusd.m15.yaml)
+- [config.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\config.yaml)
+
+关键开关包括：
+
+- `safety.one_direction_per_day`
+- `safety.news_blackout_windows`
+- `safety.trailing_stop_enabled`
+- `news_calendar.enabled`
+- `news_calendar.provider`
+
+## 九、回测输出
+
+回测完成后会输出：
 
 - `summary.json`
 - `trades.csv`
 - `equity_curve.csv`
 
-`summary.json` 当前会包含：
+## 十、建议
 
-- 最终资金
-- 净利润
-- 胜率
-- 毛利润
-- 毛亏损
-- 平均单笔收益
-- 平均盈利
-- 平均亏损
-- Profit Factor
-- 最大回撤比例
-- 被哪些风控规则拦下过多少次开仓
+实盘前建议至少先做：
 
-## 十、实盘前建议
-
-建议你至少先做这几步：
-
-1. 先用模拟盘跑 3 到 5 个交易日
-2. 检查你券商 `XAUUSD` 的最小手数、步长、合约乘数、点值
-3. 检查欧盘和美盘时段的实际滑点
-4. 观察自动新闻黑窗是否覆盖你关注的高影响事件
-5. 根据结果再细调：
-   `risk_per_trade`
-   `take_profit_pct`
-   `stop_loss_pct`
-   `trailing_trigger_pct`
-   `trailing_distance_pct`
-
-## 十一、说明
-
-- 当前自动财经日历是“可开关”的，不想用时可以直接把 `news_calendar.enabled` 改成 `false`
-- 当前“日内只做一个方向”也已经是“可开关”的，把 `safety.one_direction_per_day` 改成 `false` 即可
-- 所有核心代码文件都建议用中文注释维护，当前版本我已经开始统一整理
+1. 模拟盘验证
+2. 检查券商品种点值、合约乘数、最小手数
+3. 检查欧盘、美盘和周末时段的滑点
+4. 检查自动新闻黑窗是否正常导出
+5. 分别独立验证黄金和 BTC 的实际成交行为
