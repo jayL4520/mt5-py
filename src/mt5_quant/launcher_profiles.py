@@ -55,6 +55,12 @@ def get_runtime_profiles_dir() -> Path:
     return path
 
 
+def get_logs_dir() -> Path:
+    path = Path.cwd() / "logs"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def get_runtime_config_path(profile_name: str) -> Path:
     """按品种生成运行时配置副本路径。"""
     return get_runtime_profiles_dir() / f"{profile_name}.runtime.yaml"

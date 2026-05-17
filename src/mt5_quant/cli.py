@@ -14,16 +14,22 @@ from mt5_quant import __version__
 from mt5_quant.backtest import BacktestEngine
 from mt5_quant.config import AppConfig, load_config
 from mt5_quant.data import Mt5Gateway
-from mt5_quant.launcher_profiles import PROFILE_PRESETS, get_launch_config
+from mt5_quant.launcher_profiles import PROFILE_PRESETS, get_launch_config, get_logs_dir
 from mt5_quant.live import LiveTradingEngine
 from mt5_quant.strategy import BtcM15RegimeStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
 
 
 def configure_logging() -> None:
     """统一日志输出格式。"""
+    log_path = get_logs_dir() / "mt5-quant.log"
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(log_path, encoding="utf-8"),
+        ],
+        force=True,
     )
 
 

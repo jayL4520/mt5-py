@@ -15,6 +15,7 @@ from mt5_quant import __version__
 from mt5_quant.launcher_profiles import (
     PROFILE_PRESETS,
     get_launch_config,
+    get_logs_dir,
     get_runtime_profiles_dir,
     load_profile_yaml,
     save_runtime_profile,
@@ -61,6 +62,7 @@ class LauncherWindow:
         self.profile_var = tk.StringVar(value="xau")
         self.report_dir_var = tk.StringVar(value="")
         self.csv_path_var = tk.StringVar(value="")
+        self.auto_close_var = tk.BooleanVar(value=False)
         self.status_var = tk.StringVar(value="就绪")
         self.fields: list[FieldBinding] = []
         self.current_data: dict[str, Any] = {}
@@ -148,6 +150,11 @@ class LauncherWindow:
         ttk.Label(top, text="报表输出目录").grid(row=4, column=0, sticky="w")
         ttk.Entry(top, textvariable=self.report_dir_var, width=70).grid(row=5, column=0, sticky="we", pady=(4, 8))
         ttk.Button(top, text="选择目录", command=self._choose_report_dir).grid(row=5, column=1, padx=(8, 0))
+        ttk.Checkbutton(
+            top,
+            text="启动后自动关闭 GUI 启动器",
+            variable=self.auto_close_var,
+        ).grid(row=6, column=0, sticky="w", pady=(6, 0))
         top.columnconfigure(0, weight=1)
 
         buttons = ttk.Frame(self.run_tab)
@@ -157,6 +164,8 @@ class LauncherWindow:
         ttk.Button(buttons, text="启动实盘 / 模拟盘", command=lambda: self._launch_process("live")).pack(fill="x", pady=4)
         ttk.Button(buttons, text="启动 MT5 历史回测", command=lambda: self._launch_process("backtest_mt5")).pack(fill="x", pady=4)
         ttk.Button(buttons, text="启动 CSV 回测", command=lambda: self._launch_process("backtest_csv")).pack(fill="x", pady=4)
+        ttk.Button(buttons, text="打开报表目录", command=self._open_report_dir).pack(fill="x", pady=4)
+        ttk.Button(buttons, text="打开日志目录", command=self._open_logs_dir).pack(fill="x", pady=4)
         ttk.Button(buttons, text="打开运行配置目录", command=self._open_profiles_dir).pack(fill="x", pady=4)
 
     def _render_fields(self, parent: ttk.Frame, field_specs: list[tuple[str, str, str, type]]) -> None:
@@ -224,6 +233,9 @@ class LauncherWindow:
             return
 
         self.status_var.set("已启动新进程。")
+        if self.auto_close_var.get():
+            self.root.after(100, self.root.destroy)
+            return
         messagebox.showinfo("已启动", "已启动新的运行进程。")
 
     def _build_launch_command(self, runtime_path: Path, mode: str) -> list[str]:
@@ -274,7 +286,23 @@ class LauncherWindow:
             self.report_dir_var.set(path)
 
     def _open_profiles_dir(self) -> None:
-        path = get_runtime_profiles_dir()
+        self._open_directory(get_runtime_profiles_dir())
+
+    def _open_report_dir(self) -> None:
+        self._open_directory(self._get_effective_report_dir())
+
+    def _open_logs_dir(self) -> None:
+        self._open_directory(get_logs_dir())
+
+    def _get_effective_report_dir(self) -> Path:
+        report_dir = self.report_dir_var.get().strip() or self.current_data.get("reporting", {}).get("output_dir", "reports")
+        path = Path(report_dir)
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def _open_directory(self, path: Path) -> None:
         try:
             if sys.platform == "win32":
                 subprocess.Popen(["explorer", str(path)])
