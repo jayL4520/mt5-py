@@ -12,6 +12,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any
 
 from mt5_quant import __version__
+from mt5_quant.config import load_config
 from mt5_quant.launcher_profiles import (
     PROFILE_PRESETS,
     get_launch_config,
@@ -20,6 +21,7 @@ from mt5_quant.launcher_profiles import (
     load_profile_yaml,
     save_runtime_profile,
 )
+from mt5_quant.news_calendar import validate_calendar_data_source
 
 
 @dataclass(slots=True)
@@ -223,6 +225,18 @@ class LauncherWindow:
 
     def _launch_process(self, mode: str) -> None:
         runtime_path = self._save_runtime_config()
+        try:
+            config = load_config(runtime_path)
+            validate_calendar_data_source(
+                config.news_calendar,
+                config.safety.timezone,
+                config.mt5.path,
+            )
+        except Exception as exc:
+            messagebox.showerror("启动前检查失败", str(exc))
+            self.status_var.set("启动前检查失败。")
+            return
+
         command = self._build_launch_command(runtime_path, mode)
 
         try:

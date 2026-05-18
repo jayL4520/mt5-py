@@ -14,7 +14,7 @@ if (Test-Path ".\dist") {
 }
 
 Write-Host "==> 开始打包 mt5-quant.exe"
-py -3.13 -m PyInstaller --noconfirm --clean ".\mt5_quant.spec"
+py -3.13 -m PyInstaller --noconfirm --clean ".\mt5_quant.1.0.5.spec"
 
 Write-Host "==> 打包完成"
 Write-Host "输出目录: $((Resolve-Path '.\dist').Path)"

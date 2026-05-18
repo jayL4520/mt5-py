@@ -22,6 +22,8 @@
 - 新增本地运行日志 `logs/mt5-quant.log`
 - 新增 `optimize-btc` 参数优化入口
 - 新增 BTC 参数优化模板与中文回测报告模板
+- 新增 `optimize-btc --workers` 并行提速能力
+- 新增 `diagnose-signals` 信号诊断模式
 - 新增 Python 启动前财经日历文件硬校验
 - 重写 `ExportEconomicCalendar.mq5`
   - 默认只导出 `USD` 高影响新闻

@@ -34,6 +34,22 @@ def configure_logging() -> None:
     )
 
 
+def report_fatal_error(exc: Exception) -> None:
+    """统一处理启动失败，避免把整段 traceback 直接暴露给最终用户。"""
+    message = str(exc).strip() or exc.__class__.__name__
+    try:
+        log_path = get_logs_dir() / "mt5-quant.log"
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(f"ERROR | 程序启动失败 | {message}\n")
+    except Exception:
+        pass
+    print()
+    print("启动失败：")
+    print(message)
+
+    raise SystemExit(1)
+
+
 def build_strategy(config: AppConfig):
     """根据配置名称构造策略对象。"""
     if config.strategy.name == "ma_cross_atr":
@@ -205,6 +221,20 @@ def run_btc_optimization_command(args) -> None:
         csv_path=args.csv,
         output_dir=args.output_dir,
         template_path=args.template,
+        max_workers=args.workers,
+    )
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+def run_signal_diagnosis_command(args) -> None:
+    """运行信号诊断并输出摘要。"""
+    from mt5_quant.diagnostics import run_signal_diagnosis
+
+    result = run_signal_diagnosis(
+        config_path=args.config,
+        csv_path=args.csv,
+        bars=args.bars,
+        output_dir=args.output_dir,
     )
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
@@ -235,6 +265,13 @@ def build_parser() -> argparse.ArgumentParser:
     optimize_parser.add_argument("--csv", required=True, help="Path to BTC CSV history file")
     optimize_parser.add_argument("--output-dir", required=True, help="Directory to export optimization files")
     optimize_parser.add_argument("--template", help="Path to BTC optimization template yaml")
+    optimize_parser.add_argument("--workers", type=int, help="Parallel worker count for BTC optimization")
+
+    diagnose_parser = subparsers.add_parser("diagnose-signals", help="Run strategy signal diagnosis")
+    diagnose_parser.add_argument("--config", required=True, help="Path to yaml config")
+    diagnose_parser.add_argument("--csv", help="Path to CSV history file")
+    diagnose_parser.add_argument("--bars", type=int, help="Number of bars to fetch from MT5")
+    diagnose_parser.add_argument("--output-dir", required=True, help="Directory to export diagnosis files")
 
     subparsers.add_parser("gui", help="Open the GUI launcher")
     return parser
@@ -257,40 +294,48 @@ def run_launch_command(args) -> None:
 def main() -> None:
     """程序主入口。"""
     configure_logging()
+    try:
+        if len(sys.argv) == 1:
+            try:
+                run_gui_launcher()
+            except Exception:
+                run_text_launcher()
+            return
 
-    if len(sys.argv) == 1:
-        try:
+        parser = build_parser()
+        args = parser.parse_args()
+
+        if args.command == "gui":
             run_gui_launcher()
-        except Exception:
-            run_text_launcher()
-        return
+            return
 
-    parser = build_parser()
-    args = parser.parse_args()
+        if args.command == "launch":
+            run_launch_command(args)
+            return
 
-    if args.command == "gui":
-        run_gui_launcher()
-        return
+        if args.command == "optimize-btc":
+            run_btc_optimization_command(args)
+            return
 
-    if args.command == "launch":
-        run_launch_command(args)
-        return
+        if args.command == "diagnose-signals":
+            run_signal_diagnosis_command(args)
+            return
 
-    if args.command == "optimize-btc":
-        run_btc_optimization_command(args)
-        return
+        config = load_config(args.config)
 
-    config = load_config(args.config)
+        if args.command == "backtest":
+            run_backtest(config, csv_path=args.csv, bars=args.bars, report_dir=args.report_dir)
+            return
 
-    if args.command == "backtest":
-        run_backtest(config, csv_path=args.csv, bars=args.bars, report_dir=args.report_dir)
-        return
+        if args.command == "live":
+            run_live(config)
+            return
 
-    if args.command == "live":
-        run_live(config)
-        return
-
-    raise ValueError(f"Unhandled command: {args.command}")
+        raise ValueError(f"Unhandled command: {args.command}")
+    except KeyboardInterrupt:
+        report_fatal_error(RuntimeError("用户已手动中断运行。"))
+    except Exception as exc:
+        report_fatal_error(exc)
 
 
 if __name__ == "__main__":

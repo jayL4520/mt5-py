@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from dataclasses import fields
 from itertools import product
 import json
+import os
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import pandas as pd
@@ -21,6 +24,16 @@ from mt5_quant.strategy import BtcM15RegimeStrategy
 
 DEFAULT_TEMPLATE_PATH = Path("templates") / "btc_optimization_template.yaml"
 DEFAULT_REPORT_TEMPLATE_PATH = Path("templates") / "btc_backtest_report_template.md"
+
+
+def resolve_worker_count(max_workers: int | None, total_tasks: int) -> int:
+    """解析参数优化线程数。"""
+    if total_tasks <= 1:
+        return 1
+    if max_workers is not None:
+        return max(1, min(max_workers, total_tasks))
+    cpu_count = os.cpu_count() or 1
+    return max(1, min(cpu_count, total_tasks, 8))
 
 
 def load_csv_history(path: str | Path) -> pd.DataFrame:
@@ -258,11 +271,79 @@ def export_optimization_outputs(
     )
 
 
+def build_candidate_error_row(
+    candidate_id: int,
+    overrides: dict[str, Any],
+    initial_balance: float,
+    reason: str,
+) -> dict[str, Any]:
+    """构造非法参数或执行失败时的兜底结果。"""
+    return {
+        "candidate_id": candidate_id,
+        "final_balance": initial_balance,
+        "net_profit": 0.0,
+        "total_trades": 0,
+        "win_rate": 0.0,
+        "gross_profit": 0.0,
+        "gross_loss": 0.0,
+        "avg_trade": 0.0,
+        "avg_win": 0.0,
+        "avg_loss": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 1.0,
+        "blocked_entries": {},
+        "qualified": False,
+        "qualified_note": reason,
+        "parameters_json": json.dumps(overrides, ensure_ascii=False),
+    }
+
+
+def evaluate_btc_candidate(
+    candidate_id: int,
+    overrides: dict[str, Any],
+    base_config: AppConfig,
+    data: pd.DataFrame,
+    qualification: dict[str, Any],
+) -> dict[str, Any]:
+    """执行单组 BTC 参数回测。"""
+    config = apply_strategy_overrides(base_config, overrides)
+    invalid_reason = validate_btc_parameter_set(config.strategy)
+    if invalid_reason:
+        return build_candidate_error_row(
+            candidate_id=candidate_id,
+            overrides=overrides,
+            initial_balance=base_config.backtest.initial_balance,
+            reason=f"参数非法: {invalid_reason}",
+        )
+
+    try:
+        strategy = BtcM15RegimeStrategy(config.strategy)
+        result = BacktestEngine(config, strategy).run(data)
+    except Exception as exc:
+        return build_candidate_error_row(
+            candidate_id=candidate_id,
+            overrides=overrides,
+            initial_balance=base_config.backtest.initial_balance,
+            reason=f"回测异常: {exc}",
+        )
+
+    summary = {key: value for key, value in result.items() if key not in {"trades", "equity_curve"}}
+    qualified, qualified_note = is_candidate_qualified(summary, qualification)
+    return {
+        "candidate_id": candidate_id,
+        **summary,
+        "qualified": qualified,
+        "qualified_note": qualified_note,
+        "parameters_json": json.dumps(overrides, ensure_ascii=False),
+    }
+
+
 def run_btc_optimization(
     config_path: str | Path,
     csv_path: str | Path,
     output_dir: str | Path,
     template_path: str | None = None,
+    max_workers: int | None = None,
 ) -> dict[str, Any]:
     """运行 BTC 参数优化，并把结果导出到指定目录。"""
     base_config = load_config(config_path)
@@ -277,48 +358,36 @@ def run_btc_optimization(
     template = load_optimization_template(template_path)
     report_template_path = resolve_template_path(None, DEFAULT_REPORT_TEMPLATE_PATH)
     parameter_grid = build_parameter_grid(dict(template.get("strategy_grid", {})))
+    qualification = dict(template.get("qualification", {}))
     data = load_csv_history(csv_path)
+    worker_count = resolve_worker_count(max_workers, len(parameter_grid))
     rows: list[dict[str, Any]] = []
+    started_at = perf_counter()
 
-    for index, overrides in enumerate(parameter_grid, start=1):
-        config = apply_strategy_overrides(base_config, overrides)
-        invalid_reason = validate_btc_parameter_set(config.strategy)
-        if invalid_reason:
-            rows.append(
-                {
-                    "candidate_id": index,
-                    "final_balance": base_config.backtest.initial_balance,
-                    "net_profit": 0.0,
-                    "total_trades": 0,
-                    "win_rate": 0.0,
-                    "gross_profit": 0.0,
-                    "gross_loss": 0.0,
-                    "avg_trade": 0.0,
-                    "avg_win": 0.0,
-                    "avg_loss": 0.0,
-                    "profit_factor": 0.0,
-                    "max_drawdown_pct": 1.0,
-                    "blocked_entries": {},
-                    "qualified": False,
-                    "qualified_note": f"参数非法: {invalid_reason}",
-                    "parameters_json": json.dumps(overrides, ensure_ascii=False),
-                }
-            )
-            continue
+    print(f"开始执行 BTC 参数优化，共 {len(parameter_grid)} 组，线程数 {worker_count}。")
 
-        strategy = BtcM15RegimeStrategy(config.strategy)
-        result = BacktestEngine(config, strategy).run(data)
-        summary = {key: value for key, value in result.items() if key not in {"trades", "equity_curve"}}
-        qualified, qualified_note = is_candidate_qualified(summary, dict(template.get("qualification", {})))
-        rows.append(
-            {
-                "candidate_id": index,
-                **summary,
-                "qualified": qualified,
-                "qualified_note": qualified_note,
-                "parameters_json": json.dumps(overrides, ensure_ascii=False),
+    if worker_count == 1:
+        for index, overrides in enumerate(parameter_grid, start=1):
+            row = evaluate_btc_candidate(index, overrides, base_config, data, qualification)
+            rows.append(row)
+            print(f"[{len(rows)}/{len(parameter_grid)}] 参数组 {index} 已完成。")
+    else:
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            future_map = {
+                executor.submit(
+                    evaluate_btc_candidate,
+                    index,
+                    overrides,
+                    base_config,
+                    data,
+                    qualification,
+                ): index
+                for index, overrides in enumerate(parameter_grid, start=1)
             }
-        )
+            for completed_count, future in enumerate(as_completed(future_map), start=1):
+                candidate_id = future_map[future]
+                rows.append(future.result())
+                print(f"[{completed_count}/{len(parameter_grid)}] 参数组 {candidate_id} 已完成。")
 
     ranked_rows = rank_candidates(rows, dict(template.get("ranking", {})))
     best_row = next((row for row in ranked_rows if row["qualified"]), ranked_rows[0])
@@ -329,11 +398,16 @@ def run_btc_optimization(
         template,
         report_template_path,
     )
+
+    elapsed_seconds = perf_counter() - started_at
     return {
         "tested_candidates": len(rows),
+        "qualified_candidates": sum(1 for row in rows if row["qualified"]),
+        "worker_count": worker_count,
         "best_candidate_id": best_row["candidate_id"],
         "best_net_profit": best_row["net_profit"],
         "best_profit_factor": best_row["profit_factor"],
         "best_max_drawdown_pct": best_row["max_drawdown_pct"],
+        "elapsed_seconds": round(elapsed_seconds, 3),
         "output_dir": str(Path(output_dir)),
     }

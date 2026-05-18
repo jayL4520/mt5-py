@@ -219,6 +219,12 @@ mt5-quant live --config config.btcusd.m15.yaml
 mt5-quant optimize-btc --config config.btcusd.m15.yaml --csv sample_btc.csv --output-dir reports/btc_opt
 ```
 
+如需提速，可直接增加并行线程数：
+
+```bash
+mt5-quant optimize-btc --config config.btcusd.m15.offline.yaml --csv sample_btc.csv --output-dir reports/btc_opt_parallel --workers 4
+```
+
 默认模板文件：
 
 - [btc_optimization_template.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\templates\btc_optimization_template.yaml)
@@ -231,6 +237,33 @@ mt5-quant optimize-btc --config config.btcusd.m15.yaml --csv sample_btc.csv --ou
 - `best_summary.json`
 - `optimization_report.md`
 - `btc_backtest_report_template.md`
+
+### 6. 信号诊断
+
+如果你遇到“实盘一直不出单”或“回测样本不触发”的情况，现在可以直接用诊断模式检查：
+
+```bash
+mt5-quant diagnose-signals --config config.xauusd.m1.yaml --bars 1500 --output-dir reports/xau_diag
+```
+
+如果你要检查本地 CSV 样本是否周期不匹配，也可以这样跑：
+
+```bash
+mt5-quant diagnose-signals --config config.btcusd.m15.offline.yaml --csv sample_btc.csv --output-dir reports/btc_diag
+```
+
+诊断完成后会输出：
+
+- `diagnosis_summary.json`
+- `diagnosis_report.md`
+
+诊断内容包括：
+
+- 样本主周期是否匹配配置周期
+- 原始信号是否真的产生
+- 回测成交笔数与被拦截原因
+- 财经日历文件当前是否可用
+- 最近一批原始入场信号时间与方向
 
 ## 六、打包 EXE
 
@@ -320,6 +353,11 @@ pip install -e .[build]
 - `best_parameters.json`
 - `best_summary.json`
 - `optimization_report.md`
+
+如果执行了 `diagnose-signals`，还会额外输出：
+
+- `diagnosis_summary.json`
+- `diagnosis_report.md`
 
 ## 十、建议
 
