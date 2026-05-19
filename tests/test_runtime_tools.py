@@ -8,7 +8,7 @@ import pytest
 
 from mt5_quant.config import NewsCalendarConfig
 from mt5_quant.diagnostics import summarize_diagnosis
-from mt5_quant.news_calendar import validate_calendar_data_source
+from mt5_quant.news_calendar import Mt5FileCalendarClient, validate_calendar_data_source
 from mt5_quant.optimizer import build_parameter_grid, resolve_worker_count
 
 
@@ -44,6 +44,36 @@ def test_build_parameter_grid_expands_all_combinations() -> None:
     assert len(grid) == 4
     assert {"ema_fast": 18, "ema_slow": 55, "adx_threshold": 20} in grid
     assert {"ema_fast": 20, "ema_slow": 60, "adx_threshold": 20} in grid
+
+
+def test_mt5_calendar_csv_supports_gbk_fallback(tmp_path: Path) -> None:
+    csv_path = tmp_path / "mt5_calendar_events.csv"
+    csv_path.write_text(
+        "utc_time,server_time,title,currency,country,importance\n"
+        "2026-05-18 12:30:00,2026-05-18 15:30:00,美元数据,USD,United States,3\n",
+        encoding="gbk",
+    )
+
+    config = NewsCalendarConfig(
+        enabled=True,
+        provider="mt5_file",
+        api_key="guest:guest",
+        countries=["united states"],
+        importance=3,
+        pre_blackout_minutes=10,
+        post_blackout_minutes=10,
+        lookahead_days=7,
+        cache_minutes=30,
+        request_timeout_seconds=20,
+        common_filename="mt5_calendar_events.csv",
+        file_path=str(csv_path),
+    )
+
+    client = Mt5FileCalendarClient(config, "Asia/Shanghai")
+    windows = client.fetch_windows("2026-05-18T00:00:00Z", "2026-05-19T00:00:00Z")
+
+    assert len(windows) == 1
+    assert windows[0].title == "美元数据"
 
 
 def test_resolve_worker_count_respects_bounds() -> None:

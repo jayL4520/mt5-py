@@ -5,11 +5,15 @@ src/mt5_quant/backtest.py
 src/mt5_quant/cli.py
 src/mt5_quant/config.py
 src/mt5_quant/data.py
+src/mt5_quant/diagnostics.py
 src/mt5_quant/execution.py
 src/mt5_quant/guardrails.py
+src/mt5_quant/gui.py
+src/mt5_quant/launcher_profiles.py
 src/mt5_quant/live.py
 src/mt5_quant/models.py
 src/mt5_quant/news_calendar.py
+src/mt5_quant/optimizer.py
 src/mt5_quant/risk.py
 src/mt5_quant/strategy/__init__.py
 src/mt5_quant/strategy/base.py
@@ -22,4 +26,5 @@ src/mt5_quant_system.egg-info/dependency_links.txt
 src/mt5_quant_system.egg-info/entry_points.txt
 src/mt5_quant_system.egg-info/requires.txt
 src/mt5_quant_system.egg-info/top_level.txt
+tests/test_runtime_tools.py
 tests/test_strategy.py

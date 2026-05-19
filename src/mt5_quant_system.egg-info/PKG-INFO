@@ -139,6 +139,69 @@ pip install -e .[build]
 
 ## 五、运行方式
 
+### 0. 多品种切换启动器
+
+现在同一个 `exe` 或同一个 Python 入口已经支持“多品种切换启动器”。
+默认会优先打开图形界面窗口；如果图形界面启动失败，则自动回退到文本菜单。
+
+如果你直接双击：
+
+- `mt5-quant.exe`
+
+或者直接运行：
+
+```bash
+mt5-quant
+```
+
+系统会自动进入菜单，你可以直接选择：
+
+- 黄金 `XAUUSD / M1`
+- 比特币 `BTCUSD / M15`
+- 实盘 / 模拟盘
+- MT5 历史回测
+- CSV 回测
+- 配置编辑并保存为运行副本
+
+### 图形界面版新增能力
+
+图形界面启动器当前支持：
+
+- 选择黄金或 BTC 预设
+- 直接编辑账号、服务器、交易品种、风险参数
+- 编辑交易时段、移动止损、新闻日历等关键配置
+- 保存为运行时配置副本
+- 一键启动实盘 / 模拟盘
+- 一键启动 MT5 历史回测
+- 一键启动 CSV 回测
+- 可选“启动后自动关闭 GUI 启动器”
+- 一键打开报表目录
+- 一键打开日志目录
+
+### 运行配置副本机制
+
+为了保留你原始配置文件里的中文备注，GUI 不会直接覆盖原始配置，而是把修改后的内容写到：
+
+- `profiles/xau.runtime.yaml`
+- `profiles/btc.runtime.yaml`
+
+之后启动器会优先使用这些运行副本。
+
+### 日志目录
+
+现在每次通过命令行或 GUI 启动交易系统时，程序都会把运行日志追加写入：
+
+- `logs/mt5-quant.log`
+
+你可以直接在 GUI 中点击“打开日志目录”查看。
+
+如果你想用命令直接指定预设，也可以：
+
+```bash
+mt5-quant launch --profile xau --mode live
+mt5-quant launch --profile btc --mode backtest --bars 5000
+```
+
 ### 1. 黄金回测
 
 ```bash
@@ -162,6 +225,60 @@ mt5-quant backtest --config config.btcusd.m15.yaml --bars 5000
 ```bash
 mt5-quant live --config config.btcusd.m15.yaml
 ```
+
+### 5. BTC 参数优化
+
+现在已经新增 BTC 专用参数优化入口，可直接结合 CSV 历史数据做网格搜索：
+
+```bash
+mt5-quant optimize-btc --config config.btcusd.m15.yaml --csv sample_btc.csv --output-dir reports/btc_opt
+```
+
+如需提速，可直接增加并行线程数：
+
+```bash
+mt5-quant optimize-btc --config config.btcusd.m15.offline.yaml --csv sample_btc.csv --output-dir reports/btc_opt_parallel --workers 4
+```
+
+默认模板文件：
+
+- [btc_optimization_template.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\templates\btc_optimization_template.yaml)
+- [btc_backtest_report_template.md](C:\Users\A\Documents\Codex\2026-05-14\mt5\templates\btc_backtest_report_template.md)
+
+优化完成后会额外输出：
+
+- `optimization_results.csv`
+- `best_parameters.json`
+- `best_summary.json`
+- `optimization_report.md`
+- `btc_backtest_report_template.md`
+
+### 6. 信号诊断
+
+如果你遇到“实盘一直不出单”或“回测样本不触发”的情况，现在可以直接用诊断模式检查：
+
+```bash
+mt5-quant diagnose-signals --config config.xauusd.m1.yaml --bars 1500 --output-dir reports/xau_diag
+```
+
+如果你要检查本地 CSV 样本是否周期不匹配，也可以这样跑：
+
+```bash
+mt5-quant diagnose-signals --config config.btcusd.m15.offline.yaml --csv sample_btc.csv --output-dir reports/btc_diag
+```
+
+诊断完成后会输出：
+
+- `diagnosis_summary.json`
+- `diagnosis_report.md`
+
+诊断内容包括：
+
+- 样本主周期是否匹配配置周期
+- 原始信号是否真的产生
+- 回测成交笔数与被拦截原因
+- 财经日历文件当前是否可用
+- 最近一批原始入场信号时间与方向
 
 ## 六、打包 EXE
 
@@ -196,6 +313,7 @@ pip install -e .[build]
 - `config.xauusd.m1.yaml`
 - `config.btcusd.m15.yaml`
 - `mql5/ExportEconomicCalendar.mq5`
+- `templates/`
 
 ## 七、自动财经日历
 
@@ -203,6 +321,13 @@ pip install -e .[build]
 
 - 由 [ExportEconomicCalendar.mq5](C:\Users\A\Documents\Codex\2026-05-14\mt5\mql5\ExportEconomicCalendar.mq5) 导出
 - Python 自动读取 `Common\Files\mt5_calendar_events.csv`
+
+导出器当前已增强为：
+
+- 默认只导出 `USD` 高影响新闻
+- 每次导出都会追加状态日志到 `Common\Files\mt5_calendar_status.log`
+- 启动时会打印自检提示，方便排查 MT5 是否联网、EA 是否真正导出成功
+- Python 在启动实盘、回测、BTC 参数优化前，会先检查新闻文件是否存在；如果不存在，会直接给出明确报错，而不是等运行中再隐式跳过
 
 ### 接入步骤
 
@@ -236,6 +361,18 @@ pip install -e .[build]
 - `summary.json`
 - `trades.csv`
 - `equity_curve.csv`
+
+如果执行了 `optimize-btc`，还会额外输出：
+
+- `optimization_results.csv`
+- `best_parameters.json`
+- `best_summary.json`
+- `optimization_report.md`
+
+如果执行了 `diagnose-signals`，还会额外输出：
+
+- `diagnosis_summary.json`
+- `diagnosis_report.md`
 
 ## 十、建议
 

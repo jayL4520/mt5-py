@@ -91,11 +91,11 @@ safety:
   timezone: "Asia/Shanghai"
   # 允许开新仓的交易时段，支持跨天
   trading_windows:
-    - "14:00-02:00"
+    - "00:00-24:00"
   # 当日最大亏损比例，到达后停止开新仓
   max_daily_loss_pct: 0.02
   # 连续亏损达到该次数后停止开新仓
-  max_consecutive_losses: 3
+  max_consecutive_losses: 5
   # 是否限制日内只做一个方向，true 表示当天先做多后不再做空
   one_direction_per_day: false
   # 手工指定的新闻黑窗，格式为 开始时间/结束时间，使用本地时区

@@ -17,6 +17,7 @@ import pandas as pd
 from mt5_quant.config import NewsCalendarConfig
 
 LOGGER = logging.getLogger(__name__)
+MT5_CALENDAR_CSV_ENCODINGS = ("utf-8-sig", "utf-8", "cp936", "gbk")
 
 
 @dataclass(slots=True)
@@ -197,7 +198,7 @@ class Mt5FileCalendarClient:
             end = end.tz_localize("UTC")
 
         windows: list[NewsBlackoutWindow] = []
-        with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
+        with self._open_calendar_csv(csv_path) as handle:
             reader = DictReader(handle)
             for row in reader:
                 event_time = pd.Timestamp(str(row.get("utc_time", "")), tz="UTC")
@@ -214,6 +215,38 @@ class Mt5FileCalendarClient:
                     )
                 )
         return TradingEconomicsCalendarClient._deduplicate(windows)
+
+    @staticmethod
+    def _open_calendar_csv(csv_path: Path):
+        """按常见 MT5/Windows 编码顺序尝试打开导出的 CSV。"""
+        last_error: UnicodeDecodeError | None = None
+        for encoding in MT5_CALENDAR_CSV_ENCODINGS:
+            handle = None
+            try:
+                handle = csv_path.open("r", encoding=encoding, newline="")
+                handle.read(1)
+                handle.seek(0)
+                if encoding not in {"utf-8-sig", "utf-8"}:
+                    LOGGER.warning("MT5 财经日历文件不是 UTF-8，已自动回退为 %s: %s", encoding, csv_path)
+                return handle
+            except UnicodeDecodeError as exc:
+                last_error = exc
+                try:
+                    handle.close()
+                except Exception:
+                    pass
+
+        raise UnicodeDecodeError(
+            last_error.encoding if last_error else "unknown",
+            last_error.object if last_error else b"",
+            last_error.start if last_error else 0,
+            last_error.end if last_error else 1,
+            (
+                f"无法解码 MT5 财经日历文件，请改为 UTF-8 或常见中文 Windows 编码后重试: {csv_path}"
+                if last_error is None
+                else f"{last_error.reason}；文件路径: {csv_path}"
+            ),
+        )
 
     def get_csv_path(self) -> Path:
         """返回当前应读取的 MT5 财经日历导出文件路径。"""
