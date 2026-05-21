@@ -1,9 +1,9 @@
 # MT5 连接配置
 mt5:
   # MT5 登录账号
-  login: 5050445394
+  login: 11
   # MT5 登录密码
-  password: "UuVy*b7g"
+  password: "111"
   # MT5 服务器名称
   server: "MetaQuotes-Demo"
   # MT5 客户端路径，留空表示使用默认安装位置
@@ -21,6 +21,8 @@ trading:
   timeframe: "M1"
   # 每次拉取的历史 K 线数量
   history_bars: 800
+  # K 线时间修正小时数。若 MT5 K 线时间比本机真实时间快 3 小时则填 3；正常情况填 0
+  mt5_bar_time_shift_hours: 0
   # 下单允许的最大滑点，单位 points
   slippage_points: 20
   # 策略魔术号，用于区分本系统订单
@@ -75,11 +77,11 @@ safety:
   timezone: "Asia/Shanghai"
   # 允许开新仓的交易时段，支持跨天
   trading_windows:
-    - "14:00-02:00"
+    - "00:00-24:00"
   # 当日最大亏损比例，到达后停止开新仓
   max_daily_loss_pct: 0.02
-  # 连续亏损达到该次数后停止开新仓
-  max_consecutive_losses: 3
+  # 连续亏损允许次数。只有实际连续亏损次数大于该值才停止开新仓；填 6 表示第 7 次及以后才熔断
+  max_consecutive_losses: 6
   # 是否限制日内只做一个方向
   one_direction_per_day: true
   # 手工指定的新闻黑窗

@@ -1,4 +1,4 @@
-"""仓位风险控制模块。"""
+"""Position sizing risk control."""
 
 from __future__ import annotations
 
@@ -9,13 +9,14 @@ from mt5_quant.data import Mt5Gateway
 
 
 class RiskManager:
-    """按单笔风险比例计算下单手数。"""
+    """Calculate order volume from risk settings."""
+
     def __init__(self, config: AppConfig, gateway: Mt5Gateway) -> None:
         self.config = config
         self.gateway = gateway
 
     def calculate_volume(self, side: str, entry: float, stop_loss: float) -> float:
-        """根据账户余额和止损距离计算标准化手数。"""
+        """Calculate normalized volume from account balance and stop distance."""
         account = self.gateway.get_account_info()
         info = self.gateway.get_symbol_info()
         risk_amount = float(account.balance) * self.config.strategy.risk_per_trade
@@ -29,7 +30,8 @@ class RiskManager:
                 return 0.0
             loss_per_lot = distance * float(info.trade_contract_size)
 
-        raw_volume = risk_amount / loss_per_lot
+        # Apply the GUI-configured leverage multiplier to the base risk volume.
+        raw_volume = (risk_amount / loss_per_lot) * self.config.strategy.leverage_multiplier
         return self._normalize_volume(raw_volume, info.volume_min, info.volume_max, info.volume_step)
 
     @staticmethod

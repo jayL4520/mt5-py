@@ -14,7 +14,7 @@ from mt5_quant.backtest import BacktestEngine
 from mt5_quant.config import AppConfig, load_config
 from mt5_quant.data import Mt5Gateway
 from mt5_quant.news_calendar import validate_calendar_data_source
-from mt5_quant.strategy import BtcM15RegimeStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
+from mt5_quant.strategy import BtcM15RegimeStrategy, EmaCrossAtrStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
 
 
 TIMEFRAME_TO_MINUTES = {
@@ -30,6 +30,8 @@ TIMEFRAME_TO_MINUTES = {
 
 def build_strategy(config: AppConfig):
     """根据配置构造策略实例。"""
+    if config.strategy.name == "ema_cross_atr":
+        return EmaCrossAtrStrategy(config.strategy)
     if config.strategy.name == "ma_cross_atr":
         return MovingAverageAtrStrategy(config.strategy)
     if config.strategy.name == "xau_m1_momentum":

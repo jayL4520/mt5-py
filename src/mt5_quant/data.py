@@ -75,9 +75,20 @@ class Mt5Gateway:
             raise RuntimeError(f"No rates returned for {self.config.trading.symbol}")
 
         frame = pd.DataFrame(rates)
-        frame["time"] = pd.to_datetime(frame["time"], unit="s", utc=True)
+        frame["time"] = self._convert_rate_time(
+            frame["time"],
+            self.config.trading.mt5_bar_time_shift_hours,
+        )
         frame = frame.rename(columns={"tick_volume": "volume"})
         return frame.set_index("time")
+
+    @staticmethod
+    def _convert_rate_time(raw_time, shift_hours: float) -> pd.Series:
+        """把 MT5 K 线时间转成 UTC，并按配置修正券商服务器时区偏移。"""
+        converted = pd.to_datetime(raw_time, unit="s", utc=True)
+        if shift_hours:
+            converted = converted - pd.to_timedelta(shift_hours, unit="h")
+        return converted
 
     def get_positions(self) -> list[Position]:
         """读取当前策略名下的持仓。"""

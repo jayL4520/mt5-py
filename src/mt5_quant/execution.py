@@ -7,15 +7,24 @@ import logging
 from mt5_quant.config import AppConfig
 from mt5_quant.data import Mt5Gateway
 from mt5_quant.models import Position
+from mt5_quant.runtime_events import RuntimeEventWriter
 
 LOGGER = logging.getLogger(__name__)
 
 
 class ExecutionEngine:
     """负责把策略动作转换成 MT5 交易请求。"""
-    def __init__(self, config: AppConfig, gateway: Mt5Gateway) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        gateway: Mt5Gateway,
+        event_writer: RuntimeEventWriter | None = None,
+        session_id: str = "",
+    ) -> None:
         self.config = config
         self.gateway = gateway
+        self.event_writer = event_writer
+        self.session_id = session_id
 
     def open_market_position(
         self,
@@ -23,6 +32,9 @@ class ExecutionEngine:
         volume: float,
         stop_loss: float | None,
         take_profit: float | None,
+        *,
+        signal_reason: str = "",
+        bar_time: str = "",
     ) -> None:
         """以市价开仓，并同时附带止盈止损。"""
         lib = self.gateway._require_mt5()
@@ -49,11 +61,35 @@ class ExecutionEngine:
         result = lib.order_send(request)
         if result is None or result.retcode != lib.TRADE_RETCODE_DONE:
             retcode = getattr(result, "retcode", "unknown")
+            if self.event_writer is not None:
+                self.event_writer.emit(
+                    "runtime_error",
+                    f"开仓失败，返回码：{retcode}",
+                    signal_action=side,
+                    signal_reason=signal_reason,
+                    bar_time=bar_time,
+                    position_side=side,
+                    extra={"retcode": retcode, "volume": volume},
+                )
             raise RuntimeError(f"Open order failed: {retcode}")
 
-        LOGGER.info("Opened %s %.2f lots on %s", side, volume, self.config.trading.symbol)
+        LOGGER.info("[session_id=%s] Opened %s %.2f lots on %s", self.session_id, side, volume, self.config.trading.symbol)
+        if self.event_writer is not None:
+            self.event_writer.emit(
+                "position_opened",
+                f"已开仓：{side} {volume:.2f} 手",
+                signal_action=side,
+                signal_reason=signal_reason,
+                bar_time=bar_time,
+                position_side=side,
+                extra={
+                    "volume": volume,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
+                },
+            )
 
-    def close_position(self, position: Position) -> None:
+    def close_position(self, position: Position, *, signal_reason: str = "", bar_time: str = "") -> None:
         """以反向市价单平掉已有持仓。"""
         lib = self.gateway._require_mt5()
         tick = self.gateway.get_tick()
@@ -79,15 +115,35 @@ class ExecutionEngine:
         result = lib.order_send(request)
         if result is None or result.retcode != lib.TRADE_RETCODE_DONE:
             retcode = getattr(result, "retcode", "unknown")
+            if self.event_writer is not None:
+                self.event_writer.emit(
+                    "runtime_error",
+                    f"平仓失败，返回码：{retcode}",
+                    signal_reason=signal_reason,
+                    bar_time=bar_time,
+                    position_side=position.side,
+                    extra={"retcode": retcode, "ticket": position.ticket},
+                )
             raise RuntimeError(f"Close position failed: {retcode}")
 
-        LOGGER.info("Closed position %s on %s", position.ticket, position.symbol)
+        LOGGER.info("[session_id=%s] Closed position %s on %s", self.session_id, position.ticket, position.symbol)
+        if self.event_writer is not None:
+            self.event_writer.emit(
+                "position_closed",
+                "已平仓",
+                signal_reason=signal_reason,
+                bar_time=bar_time,
+                position_side=position.side,
+                extra={"ticket": position.ticket, "volume": position.volume},
+            )
 
     def update_position_stops(
         self,
         position: Position,
         stop_loss: float | None,
         take_profit: float | None,
+        *,
+        bar_time: str = "",
     ) -> None:
         """更新已持仓的止损止盈。"""
         lib = self.gateway._require_mt5()
@@ -104,11 +160,28 @@ class ExecutionEngine:
         result = lib.order_send(request)
         if result is None or result.retcode != lib.TRADE_RETCODE_DONE:
             retcode = getattr(result, "retcode", "unknown")
+            if self.event_writer is not None:
+                self.event_writer.emit(
+                    "runtime_error",
+                    f"止损止盈更新失败，返回码：{retcode}",
+                    bar_time=bar_time,
+                    position_side=position.side,
+                    extra={"retcode": retcode, "ticket": position.ticket},
+                )
             raise RuntimeError(f"Update stops failed: {retcode}")
 
         LOGGER.info(
-            "Updated stops for %s: sl=%s tp=%s",
+            "[session_id=%s] Updated stops for %s: sl=%s tp=%s",
+            self.session_id,
             position.ticket,
             request["sl"],
             request["tp"],
         )
+        if self.event_writer is not None:
+            self.event_writer.emit(
+                "position_stop_updated",
+                "已更新止损止盈",
+                bar_time=bar_time,
+                position_side=position.side,
+                extra={"ticket": position.ticket, "sl": request["sl"], "tp": request["tp"]},
+            )

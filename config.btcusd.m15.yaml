@@ -1,9 +1,9 @@
 # MT5 连接配置
 mt5:
   # MT5 登录账号
-  login: 277679314
+  login: 123
   # MT5 登录密码
-  password: "!1qaz2wsxQ"
+  password: "!"
   # MT5 服务器名称
   server: "Exness-MT5Trial5"
   # MT5 客户端路径，留空表示使用默认安装位置
@@ -21,6 +21,8 @@ trading:
   timeframe: "M15"
   # 每次拉取的历史 K 线数量
   history_bars: 2500
+  # K 线时间修正小时数。若监控里 K 线时间比真实时间快 3 小时则填 3；若时间已经正确则改为 0
+  mt5_bar_time_shift_hours: 3
   # 下单允许的最大滑点，单位 points
   slippage_points: 300
   # 策略魔术号，用于区分本系统订单
@@ -93,8 +95,8 @@ safety:
     - "00:00-24:00"
   # 当日最大亏损比例
   max_daily_loss_pct: 0.03
-  # 连续亏损阈值
-  max_consecutive_losses: 3
+  # 连续亏损允许次数。只有实际连续亏损次数大于该值才停止开新仓；BTC 波动大，默认第 7 次及以后才熔断
+  max_consecutive_losses: 6
   # BTC 允许日内双向切换，因此默认关闭
   one_direction_per_day: false
   # 手工新闻黑窗

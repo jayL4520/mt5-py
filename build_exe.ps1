@@ -13,7 +13,7 @@ if (Test-Path ".\dist") {
     Remove-Item -LiteralPath ".\dist" -Recurse -Force
 }
 
-Write-Host "==> 开始打包 mt5_quant.exe"
+Write-Host "==> 开始打包 mt5_quant.1.0.6.exe"
 py -3.13 -m PyInstaller --noconfirm --clean ".\mt5_quant.spec"
 
 Write-Host "==> 打包完成"

@@ -62,7 +62,7 @@ class SafetyGuard:
             return False, "news_blackout_window"
         if risk.daily_loss_pct >= self.config.max_daily_loss_pct:
             return False, "daily_loss_limit_reached"
-        if risk.consecutive_losses >= self.config.max_consecutive_losses:
+        if risk.consecutive_losses > self.config.max_consecutive_losses:
             return False, "consecutive_loss_limit_reached"
         return True, "ok"
 

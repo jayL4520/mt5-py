@@ -1,0 +1,135 @@
+# 纯 EMA 交叉 + ATR 止损止盈策略示例配置
+# 这份配置适合作为第三套独立策略入口，用于和黄金/BTC 专用策略做对比回测
+
+mt5:
+  # MT5 登录账号
+  login: 12345678
+  # MT5 登录密码
+  password: "your-password"
+  # MT5 服务器名称
+  server: "Broker-Demo"
+  # MT5 客户端路径，留空表示使用默认安装位置
+  path: ""
+  # 初始化连接超时时间，单位毫秒
+  timeout: 60000
+  # 是否使用 portable 模式启动 MT5
+  portable: false
+
+trading:
+  # 交易品种
+  symbol: "XAUUSD"
+  # 交易周期
+  timeframe: "M15"
+  # 历史 K 线数量
+  history_bars: 2000
+  # K 线时间修正小时数。若 MT5 K 线时间比本机真实时间快 3 小时则填 3；正常情况填 0
+  mt5_bar_time_shift_hours: 0
+  # 允许滑点
+  slippage_points: 50
+  # 魔术号
+  magic_number: 260519
+  # 订单备注
+  comment: "ema-cross-atr"
+  # 轮询秒数
+  poll_interval_seconds: 5
+  # 最大持仓数
+  max_open_positions: 1
+
+strategy:
+  # 策略名称
+  name: "ema_cross_atr"
+  # 单笔风险比例
+  risk_per_trade: 0.003
+  # EMA 快线
+  ema_fast: 21
+  # EMA 慢线
+  ema_slow: 55
+  # ATR 周期
+  atr_period: 14
+  # ATR 止损倍数
+  atr_stop_multiple: 2.2
+  # 固定盈亏比
+  reward_to_risk: 2.4
+
+  # 以下字段为兼容统一配置结构保留，当前 ema_cross_atr 不使用
+  short_window: 20
+  long_window: 50
+  rsi_period: 14
+  rsi_buy_threshold: 55
+  rsi_sell_threshold: 45
+  breakout_lookback: 20
+  take_profit_pct: 0.003
+  stop_loss_pct: 0.004
+  adx_period: 14
+  adx_threshold: 22
+  volume_window: 20
+  volume_multiplier: 1.0
+  breakout_buffer_pct: 0.0
+
+backtest:
+  # 回测初始资金
+  initial_balance: 100000
+  # 每手手续费
+  commission_per_lot: 0.0
+  # 模拟点差
+  spread_points: 50
+  # 合约乘数
+  contract_size: 1.0
+
+safety:
+  # 风控时区
+  timezone: "Asia/Shanghai"
+  # 允许交易时段
+  trading_windows:
+    - "14:00-02:00"
+  # 日内最大亏损比例
+  max_daily_loss_pct: 0.02
+  # 最大连续亏损次数
+  max_consecutive_losses: 6
+  # 是否日内只做一个方向
+  one_direction_per_day: false
+  # 手工新闻黑窗
+  news_blackout_windows: []
+  # 是否启用移动止损
+  trailing_stop_enabled: true
+  # 移动止损触发比例
+  trailing_trigger_pct: 0.002
+  # 移动止损跟随比例
+  trailing_distance_pct: 0.0015
+
+news_calendar:
+  # 是否启用自动新闻日历
+  enabled: true
+  # 新闻来源
+  provider: "mt5_file"
+  # 外部 API 凭证
+  api_key: "guest:guest"
+  # 关注国家
+  countries:
+    - "united states"
+  # 新闻重要性
+  importance: 3
+  # 前置黑窗分钟
+  pre_blackout_minutes: 10
+  # 后置黑窗分钟
+  post_blackout_minutes: 10
+  # 前瞻天数
+  lookahead_days: 7
+  # 缓存分钟
+  cache_minutes: 30
+  # 超时秒数
+  request_timeout_seconds: 20
+  # 默认文件名
+  common_filename: "mt5_calendar_events.csv"
+  # 手工指定文件路径，留空则自动找 Common\\Files
+  file_path: ""
+
+reporting:
+  # 报表目录
+  output_dir: "reports/ema_cross_atr"
+  # 是否导出 summary.json
+  save_summary_json: true
+  # 是否导出 trades.csv
+  save_trades_csv: true
+  # 是否导出 equity_curve.csv
+  save_equity_csv: true

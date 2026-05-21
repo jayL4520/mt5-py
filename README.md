@@ -80,6 +80,24 @@
 
 - [config.btcusd.m15.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\config.btcusd.m15.yaml)
 
+### 3. 纯 EMA 交叉策略：`ema_cross_atr`
+
+适用品种：
+
+- 通用，可自行切换品种
+- 示例默认周期：`M15`
+
+逻辑核心：
+
+- EMA 快慢线金叉/死叉入场
+- ATR 动态止损
+- 固定收益风险比止盈
+- 反向 EMA 交叉离场
+
+推荐配置文件：
+
+- [config.ema_cross_atr.yaml](C:\Users\A\Documents\Codex\2026-05-14\mt5\config.ema_cross_atr.yaml)
+
 ## 三、项目结构
 
 ```text
@@ -154,11 +172,18 @@ mt5-quant
 
 - 选择黄金或 BTC 预设
 - 直接编辑账号、服务器、交易品种、风险参数
+- MT5 密码框支持眼睛按钮显示 / 隐藏
+- GUI 可直接编辑杠杆数，默认 `1.1`
 - 编辑交易时段、移动止损、新闻日历等关键配置
 - 保存为运行时配置副本
 - 一键启动实盘 / 模拟盘
 - 一键启动 MT5 历史回测
 - 一键启动 CSV 回测
+- 一键启动 MT5 信号诊断
+- 一键启动 CSV 信号诊断
+- 诊断完成后 GUI 直接弹出中文摘要
+- 新增“运行监控”页，可查看策略痕迹、未成交原因和风控拦截历史
+- 运行监控列表按最新事件在最前显示，并支持滚动查看
 - 可选“启动后自动关闭 GUI 启动器”
 - 一键打开报表目录
 - 一键打开日志目录
@@ -177,6 +202,7 @@ mt5-quant
 现在每次通过命令行或 GUI 启动交易系统时，程序都会把运行日志追加写入：
 
 - `logs/mt5-quant.log`
+- `logs/runtime-events-YYYY-MM-DD.jsonl`
 
 你可以直接在 GUI 中点击“打开日志目录”查看。
 
@@ -238,7 +264,18 @@ mt5-quant optimize-btc --config config.btcusd.m15.offline.yaml --csv sample_btc.
 - `optimization_report.md`
 - `btc_backtest_report_template.md`
 
-### 6. 信号诊断
+### 6. 纯 EMA 策略运行示例
+
+如果你想单独测试纯 EMA 交叉策略，可以直接这样跑：
+
+```bash
+mt5-quant backtest --config config.ema_cross_atr.yaml --bars 2000
+mt5-quant live --config config.ema_cross_atr.yaml
+```
+
+建议先回测，再决定是否用于模拟盘或真实盘。
+
+### 7. 信号诊断
 
 如果你遇到“实盘一直不出单”或“回测样本不触发”的情况，现在可以直接用诊断模式检查：
 
@@ -256,6 +293,8 @@ mt5-quant diagnose-signals --config config.btcusd.m15.offline.yaml --csv sample_
 
 - `diagnosis_summary.json`
 - `diagnosis_report.md`
+- [REALTIME_NO_TRADE_BUG_REVIEW.md](C:\Users\A\Documents\Codex\2026-05-14\mt5\REALTIME_NO_TRADE_BUG_REVIEW.md)
+- [REALTIME_NO_TRADE_RUNBOOK.md](C:\Users\A\Documents\Codex\2026-05-14\mt5\REALTIME_NO_TRADE_RUNBOOK.md)
 
 诊断内容包括：
 

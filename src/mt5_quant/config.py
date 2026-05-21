@@ -39,6 +39,7 @@ class TradingConfig:
     symbol: str
     timeframe: str
     history_bars: int
+    mt5_bar_time_shift_hours: float
     slippage_points: int
     magic_number: int
     comment: str
@@ -55,6 +56,7 @@ class StrategyConfig:
     atr_stop_multiple: float
     reward_to_risk: float
     risk_per_trade: float
+    leverage_multiplier: float
     ema_fast: int
     ema_slow: int
     rsi_period: int
@@ -165,6 +167,7 @@ def load_config(path: str | Path) -> AppConfig:
             symbol=str(_required(trading, "symbol")),
             timeframe=str(_required(trading, "timeframe")).upper(),
             history_bars=int(trading.get("history_bars", 800)),
+            mt5_bar_time_shift_hours=float(trading.get("mt5_bar_time_shift_hours", 0.0)),
             slippage_points=int(trading.get("slippage_points", 20)),
             magic_number=int(trading.get("magic_number", 260516)),
             comment=str(trading.get("comment", "mt5-quant")),
@@ -179,6 +182,7 @@ def load_config(path: str | Path) -> AppConfig:
             atr_stop_multiple=float(strategy.get("atr_stop_multiple", 2.0)),
             reward_to_risk=float(strategy.get("reward_to_risk", 2.0)),
             risk_per_trade=float(strategy.get("risk_per_trade", 0.01)),
+            leverage_multiplier=float(strategy.get("leverage_multiplier", 1.1)),
             ema_fast=int(strategy.get("ema_fast", 21)),
             ema_slow=int(strategy.get("ema_slow", 55)),
             rsi_period=int(strategy.get("rsi_period", 14)),
@@ -203,7 +207,7 @@ def load_config(path: str | Path) -> AppConfig:
             timezone=str(safety.get("timezone", "Asia/Shanghai")),
             trading_windows=[str(value) for value in safety.get("trading_windows", ["14:00-02:00"])],
             max_daily_loss_pct=float(safety.get("max_daily_loss_pct", 0.02)),
-            max_consecutive_losses=int(safety.get("max_consecutive_losses", 3)),
+            max_consecutive_losses=int(safety.get("max_consecutive_losses", 6)),
             one_direction_per_day=bool(safety.get("one_direction_per_day", True)),
             news_blackout_windows=[str(value) for value in safety.get("news_blackout_windows", [])],
             trailing_stop_enabled=bool(safety.get("trailing_stop_enabled", True)),
@@ -236,11 +240,30 @@ def load_config(path: str | Path) -> AppConfig:
         allowed = ", ".join(TIMEFRAME_ALIASES)
         raise ConfigError(f"Unsupported timeframe {cfg.trading.timeframe}. Allowed: {allowed}")
 
+    if not -24 <= cfg.trading.mt5_bar_time_shift_hours <= 24:
+        raise ConfigError("trading.mt5_bar_time_shift_hours must be between -24 and 24.")
+
     if not 0 < cfg.strategy.risk_per_trade < 1:
         raise ConfigError("strategy.risk_per_trade must be between 0 and 1.")
 
-    if cfg.strategy.name == "ma_cross_atr" and cfg.strategy.short_window >= cfg.strategy.long_window:
-        raise ConfigError("strategy.short_window must be smaller than strategy.long_window.")
+    if cfg.strategy.leverage_multiplier <= 0:
+        raise ConfigError("strategy.leverage_multiplier must be greater than 0.")
+
+    if cfg.strategy.name == "ma_cross_atr":
+        if cfg.strategy.short_window >= cfg.strategy.long_window:
+            raise ConfigError("strategy.short_window must be smaller than strategy.long_window.")
+        if cfg.strategy.atr_stop_multiple <= 0:
+            raise ConfigError("strategy.atr_stop_multiple must be greater than 0.")
+        if cfg.strategy.reward_to_risk <= 0:
+            raise ConfigError("strategy.reward_to_risk must be greater than 0.")
+
+    if cfg.strategy.name == "ema_cross_atr":
+        if cfg.strategy.ema_fast >= cfg.strategy.ema_slow:
+            raise ConfigError("strategy.ema_fast must be smaller than strategy.ema_slow.")
+        if cfg.strategy.atr_stop_multiple <= 0:
+            raise ConfigError("strategy.atr_stop_multiple must be greater than 0.")
+        if cfg.strategy.reward_to_risk <= 0:
+            raise ConfigError("strategy.reward_to_risk must be greater than 0.")
 
     if cfg.strategy.name == "xau_m1_momentum":
         if cfg.strategy.ema_fast >= cfg.strategy.ema_slow:

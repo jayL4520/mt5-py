@@ -17,7 +17,7 @@ from mt5_quant.data import Mt5Gateway
 from mt5_quant.launcher_profiles import PROFILE_PRESETS, get_launch_config, get_logs_dir
 from mt5_quant.live import LiveTradingEngine
 from mt5_quant.news_calendar import validate_calendar_data_source
-from mt5_quant.strategy import BtcM15RegimeStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
+from mt5_quant.strategy import BtcM15RegimeStrategy, EmaCrossAtrStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
 
 
 def configure_logging() -> None:
@@ -52,6 +52,8 @@ def report_fatal_error(exc: Exception) -> None:
 
 def build_strategy(config: AppConfig):
     """根据配置名称构造策略对象。"""
+    if config.strategy.name == "ema_cross_atr":
+        return EmaCrossAtrStrategy(config.strategy)
     if config.strategy.name == "ma_cross_atr":
         return MovingAverageAtrStrategy(config.strategy)
     if config.strategy.name == "xau_m1_momentum":
@@ -120,11 +122,11 @@ def run_backtest(config: AppConfig, csv_path: str | None, bars: int | None, repo
     print(json.dumps(summary, indent=2, ensure_ascii=False))
 
 
-def run_live(config: AppConfig) -> None:
+def run_live(config: AppConfig, session_id: str | None = None) -> None:
     """执行实盘或模拟盘轮询流程。"""
     validate_runtime_dependencies(config)
     strategy = build_strategy(config)
-    engine = LiveTradingEngine(config, strategy)
+    engine = LiveTradingEngine(config, strategy, session_id=session_id)
     engine.run()
 
 
@@ -252,6 +254,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     live_parser = subparsers.add_parser("live", help="Run live trading loop")
     live_parser.add_argument("--config", required=True, help="Path to yaml config")
+    live_parser.add_argument("--session-id", help="Optional runtime session id")
 
     launcher_parser = subparsers.add_parser("launch", help="Open the interactive launcher menu")
     launcher_parser.add_argument("--profile", choices=["xau", "btc"], help="Preset profile to start")
@@ -328,7 +331,7 @@ def main() -> None:
             return
 
         if args.command == "live":
-            run_live(config)
+            run_live(config, session_id=getattr(args, "session_id", None))
             return
 
         raise ValueError(f"Unhandled command: {args.command}")

@@ -1,0 +1,13 @@
+{
+  "XAUUSD|260516|2026-05-21|outside_trading_window": {
+    "symbol": "XAUUSD",
+    "magic_number": 260516,
+    "day_key": "2026-05-21",
+    "blocked_reason": "outside_trading_window",
+    "session_id": "20260521-033619-57c83d43",
+    "extra": {
+      "source_event_bar_time": "2026-05-20 22:39:00+00:00"
+    },
+    "updated_at": "2026-05-21T01:41:39Z"
+  }
+}

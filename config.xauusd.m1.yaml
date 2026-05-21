@@ -3,17 +3,17 @@ mt5:
 
   #账户1
   # MT5 登录账号
-  login: 5050445394
+  login: 33
   # MT5 登录密码
-  password: "UuVy*b7g"
+  password: "1111"
   # MT5 服务器名称
   server: "MetaQuotes-Demo"
 
   #账户2
   # MT5 登录账号
-  # login: 277679314
+  # login: 
   # # MT5 登录密码
-  # password: "!1qaz2wsxQ"
+  # password: "!"
   # # MT5 服务器名称
   # server: "Exness-MT5Trial5"
 
@@ -34,6 +34,8 @@ trading:
   timeframe: "M1"
   # 每次拉取的历史 K 线数量
   history_bars: 1500
+  # K 线时间修正小时数。若 MT5 返回的是服务器时间(例如 UTC+3)但系统按 UTC 解析，则填 3 表示减 3 小时校准到真实 UTC；正常券商填 0
+  mt5_bar_time_shift_hours: 3
   # 下单允许的最大滑点，单位 points
   slippage_points: 50
   # 策略魔术号，用于区分本系统订单
@@ -58,11 +60,17 @@ strategy:
   # RSI 周期
   rsi_period: 14
   # RSI 多头阈值
-  rsi_buy_threshold: 56
+  rsi_buy_threshold: 58
   # RSI 空头阈值
-  rsi_sell_threshold: 44
+  rsi_sell_threshold: 42
   # 突破回看 K 线数量
-  breakout_lookback: 18
+  breakout_lookback: 24
+  # 成交量均值窗口。XAU 策略有 volume 字段时会用它过滤假突破
+  volume_window: 20
+  # 成交量确认倍数，1.05 表示当前量至少高于过去均量 5%
+  volume_multiplier: 1.05
+  # 突破缓冲比例，0.0002 表示价格至少额外突破约 0.02%，减少贴边假突破
+  breakout_buffer_pct: 0.0002
   # 固定止盈比例，0.003 = +0.3%
   take_profit_pct: 0.003
   # 固定止损比例，0.004 = -0.4%
@@ -91,11 +99,11 @@ safety:
   timezone: "Asia/Shanghai"
   # 允许开新仓的交易时段，支持跨天
   trading_windows:
-    - "00:00-24:00"
+    - "14:00-05:00"
   # 当日最大亏损比例，到达后停止开新仓
   max_daily_loss_pct: 0.02
-  # 连续亏损达到该次数后停止开新仓
-  max_consecutive_losses: 5
+  # 连续亏损允许次数。只有实际连续亏损次数大于该值才停止开新仓；填 6 表示第 7 次及以后才熔断
+  max_consecutive_losses: 6
   # 是否限制日内只做一个方向，true 表示当天先做多后不再做空
   one_direction_per_day: false
   # 手工指定的新闻黑窗，格式为 开始时间/结束时间，使用本地时区
