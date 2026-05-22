@@ -125,3 +125,55 @@ class SafetyGuard:
         if start < end:
             return start <= minute_of_day < end
         return minute_of_day >= start or minute_of_day < end
+    
+# 强化熔断： 阶梯式冷却机制
+# 连续亏损计数
+# 自动暂停交易
+# 冷却后自动恢复
+# 日志记录完整
+class LossStreakGuardrail:
+    def __init__(self, config):
+        self.max_streak_3 = config.get("max_loss_streak_3", 3)
+        self.max_streak_5 = config.get("max_loss_streak_5", 5)
+        self.cooldown_15m = 15 * 60
+        self.cooldown_1h = 3600
+        self.loss_streak = 0
+        self.last_trade_time = None
+        self.cooldown_until = None
+        self.mode = "normal"  # normal, cooldown_15m, cooldown_1h
+        
+    def on_trade_result(self, is_profit):
+        """每次平仓后调用"""
+        if is_profit:
+            self.loss_streak = 0
+            self._log("Profit! Reset loss streak.")
+        else:
+            self.loss_streak += 1
+            self._log(f"Loss #{self.loss_streak}")
+            
+            if self.loss_streak >= self.max_streak_5:
+                self.mode = "cooldown_1h"
+                self.cooldown_until = time.time() + self.cooldown_1h
+                self._alert(f"🚨 5连亏！暂停交易1小时，至 {datetime.fromtimestamp(self.cooldown_until).strftime('%H:%M')}")
+            elif self.loss_streak >= self.max_streak_3:
+                self.mode = "cooldown_15m"
+                self.cooldown_until = time.time() + self.cooldown_15m
+                self._log("⚠️ 3连亏，暂停15分钟")
+                
+    def can_trade(self):
+        if self.mode == "normal":
+            return True
+            
+        if self.cooldown_until and time.time() > self.cooldown_until:
+            self.mode = "normal"
+            self._log("✅ 冷却结束，恢复交易")
+            return True
+            
+        return False
+        
+    def _log(self, msg):
+        print(f"[GUARDRAIL] {msg}")
+        
+    def _alert(self, msg):
+        # TODO: 接入 Telegram / 邮件
+        print(f"[ALERT] {msg}")
