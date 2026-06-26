@@ -1,0 +1,80 @@
+mt5:
+  login: 277679314
+  password: '!1qaz2wsxQ'
+  server: Exness-MT5Trial5
+  path: ''
+  timeout: 60000
+  portable: false
+trading:
+  symbol: BTCUSDm
+  timeframe: M15
+  history_bars: 2500
+  mt5_bar_time_shift_hours: 3.0
+  slippage_points: 300
+  magic_number: 260519
+  comment: btc-m15-regime
+  poll_interval_seconds: 5
+  max_open_positions: 1
+strategy:
+  name: btc_m15_regime
+  risk_per_trade: 0.02
+  ema_fast: 20
+  ema_slow: 60
+  rsi_period: 14
+  rsi_buy_threshold: 58.0
+  rsi_sell_threshold: 42.0
+  breakout_lookback: 20
+  atr_period: 14
+  atr_stop_multiple: 2.8
+  reward_to_risk: 2.8
+  adx_period: 14
+  adx_threshold: 24.0
+  volume_window: 20
+  volume_multiplier: 1.1
+  breakout_buffer_pct: 0.001
+  take_profit_pct: 0.02
+  stop_loss_pct: 0.01
+  short_window: 20
+  long_window: 50
+  ema_mid: 0
+  atr_min_threshold: 0.0
+  us_session_blackout: false
+  leverage_multiplier: 10.0
+  atr_trailing_multiple: 2.5
+  initial_balance: 100000.0
+  commission_per_lot: 0.0
+  spread_points: 1000
+  contract_size: 1.0
+safety:
+  timezone: Asia/Shanghai
+  trading_windows:
+  - 00:00-24:00
+  max_daily_loss_pct: 0.03
+  max_consecutive_losses: 6
+  one_direction_per_day: false
+  news_blackout_windows: []
+  trailing_stop_enabled: true
+  trailing_trigger_pct: 0.012
+  trailing_distance_pct: 0.008
+news_calendar:
+  enabled: true
+  provider: mt5_file
+  api_key: guest:guest
+  countries:
+  - united states
+  importance: 3
+  pre_blackout_minutes: 15
+  post_blackout_minutes: 20
+  lookahead_days: 7
+  cache_minutes: 30
+  request_timeout_seconds: 20
+  common_filename: mt5_calendar_events.csv
+  file_path: ''
+reporting:
+  output_dir: reports/btcusd_m15
+  save_summary_json: true
+  save_trades_csv: true
+  save_equity_csv: true
+backtest:
+  initial_balance: 10000.0
+  spread_points: 0

@@ -1,0 +1,7 @@
+# .continue/config.yaml
+
+# 👇 核心配置：启用自动接受文件变更
+allowAutomaticFileEdits: true
+
+# 可选：如果你也想自动运行 shell 命令（慎用！）
+# allowAutomaticShellCommands: true

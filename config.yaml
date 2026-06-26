@@ -1,9 +1,10 @@
 # MT5 连接配置
 mt5:
+  #账户1
   # MT5 登录账号
-  login: 11
+  login: 5050445394
   # MT5 登录密码
-  password: "111"
+  password: "UuVy*b7g"
   # MT5 服务器名称
   server: "MetaQuotes-Demo"
   # MT5 客户端路径，留空表示使用默认安装位置

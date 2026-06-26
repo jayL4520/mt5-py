@@ -1,4 +1,4 @@
-"""实盘轮询与风控执行引擎。"""
+﻿"""实盘轮询与风控执行引擎。"""
 
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ class LiveTradingEngine:
                 positions = self.gateway.get_positions()
                 active_position: Position | None = positions[0] if positions else None
                 if active_position is not None:
-                    self._apply_trailing_stop(active_position, latest_bar_time)
+                    self._apply_trailing_stop(active_position, latest_bar_time, closed)
                 signal = self.strategy.generate_signal(closed, active_position)
                 self._handle_signal(signal, active_position, latest_bar_time)
                 last_processed_bar = latest_bar_time
@@ -349,7 +349,27 @@ class LiveTradingEngine:
                 return str(deal["side"])
         return None
 
-    def _apply_trailing_stop(self, position: Position, bar_time) -> None:
+    @staticmethod
+    def _compute_atr(frame: pd.DataFrame, period: int) -> float:
+        """Compute ATR from a DataFrame of OHLCV bars."""
+        high = frame["high"]
+        low = frame["low"]
+        close = frame["close"]
+        prev_close = close.shift(1)
+        tr = pd.concat(
+            [high - low, (high - prev_close).abs(), (low - prev_close).abs()],
+            axis=1,
+        ).max(axis=1)
+        atr = tr.rolling(window=period).mean()
+        last_atr = atr.iloc[-1]
+        return float(last_atr) if not pd.isna(last_atr) else 0.0
+
+    def _apply_trailing_stop(
+        self,
+        position: Position,
+        bar_time,
+        market_data: pd.DataFrame | None = None,
+    ) -> None:
         if not self.config.safety.trailing_stop_enabled:
             return
 
@@ -358,19 +378,33 @@ class LiveTradingEngine:
         current_price = tick.bid if position.side == "buy" else tick.ask
         entry_price = position.price_open
 
+        # Determine ATR-based trailing distance from current market data.
+        atr_period = getattr(self.config.strategy, "atr_period", 14)
+        atr_trail_mult = getattr(self.config.strategy, "atr_trailing_multiple", 2.0)
+        current_atr = 0.0
+        if market_data is not None and len(market_data) >= atr_period:
+            current_atr = self._compute_atr(market_data, atr_period)
+
+        if current_atr <= 0:
+            # Fallback: use legacy percentage-based distance if ATR is unavailable.
+            current_atr = entry_price * 0.001  # tiny fallback so multiplier still works
+
+        # ATR-based stop distance (in price units).
+        stop_distance = current_atr * atr_trail_mult
+        # Ensure a minimum distance to avoid tiny trailing stops.
+        min_distance = entry_price * 0.0005  # at least 0.05% of entry
+
         if position.side == "buy":
-            move_pct = (current_price - entry_price) / entry_price
-            if move_pct < self.config.safety.trailing_trigger_pct:
-                return
-            candidate_sl = current_price * (1 - self.config.safety.trailing_distance_pct)
+            candidate_sl = current_price - stop_distance
+            if candidate_sl < min_distance:
+                return  # price hasn't moved up enough to trail
             current_sl = position.stop_loss or 0.0
             if candidate_sl <= current_sl:
                 return
         else:
-            move_pct = (entry_price - current_price) / entry_price
-            if move_pct < self.config.safety.trailing_trigger_pct:
-                return
-            candidate_sl = current_price * (1 + self.config.safety.trailing_distance_pct)
+            candidate_sl = current_price + stop_distance
+            if candidate_sl > entry_price * 2 - min_distance:
+                return  # price hasn't moved down enough to trail
             current_sl = position.stop_loss or float("inf")
             if candidate_sl >= current_sl:
                 return

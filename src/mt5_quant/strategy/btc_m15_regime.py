@@ -1,4 +1,4 @@
-"""BTCUSD M15 趋势状态突破策略。"""
+﻿"""BTCUSD M15 趋势状态突破策略。"""
 
 from __future__ import annotations
 
@@ -54,6 +54,17 @@ def _adx(data: pd.DataFrame, period: int) -> tuple[pd.Series, pd.Series, pd.Seri
     dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0.0, pd.NA)
     adx = dx.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
     return adx, plus_di, minus_di
+
+
+
+
+def _candle_body_ratio(high: float, low: float, close: float, open_price: float) -> float:
+    """Return the ratio of candle body to total range (0-1). Higher = more decisive candle."""
+    total_range = high - low
+    if total_range <= 0:
+        return 0.0
+    body = abs(close - open_price)
+    return body / total_range
 
 
 class BtcM15RegimeStrategy(Strategy):
@@ -125,8 +136,25 @@ class BtcM15RegimeStrategy(Strategy):
             and current["rsi"] <= self.config.rsi_sell_threshold
         )
 
-        long_breakout = close_price > float(current["breakout_high"]) + buffer and previous["close"] <= previous["breakout_high"]
-        short_breakout = close_price < float(current["breakout_low"]) - buffer and previous["close"] >= previous["breakout_low"]
+        long_breakout = (
+            close_price > float(current["breakout_high"]) + buffer
+            and previous["close"] <= previous["breakout_high"]
+        )
+        short_breakout = (
+            close_price < float(current["breakout_low"]) - buffer
+            and previous["close"] >= previous["breakout_low"]
+        )
+
+        # Candle body ratio: require breakout candle has a decisive body (not a doji/spin-top).
+        # A small body relative to the range means indecision — likely to reverse.
+        _MIN_BODY_RATIO = 0.35  # body must be >= 35% of total range
+        current_open = float(current["open"])
+        current_high = float(current["high"])
+        current_low = float(current["low"])
+        breakout_body = _candle_body_ratio(current_high, current_low, close_price, current_open)
+        long_breakout = long_breakout and breakout_body >= _MIN_BODY_RATIO
+        short_breakout = short_breakout and breakout_body >= _MIN_BODY_RATIO
+
 
         stop_distance = atr_value * self.config.atr_stop_multiple
         if stop_distance <= 0:

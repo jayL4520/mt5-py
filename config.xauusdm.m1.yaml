@@ -1,20 +1,18 @@
-# MT5 连接配置
-mt5:
-
   #账户1
-  # # MT5 登录账号
-  # login: 
-  # # MT5 登录密码
-  # password: ""
-  # # MT5 服务器名称
-  # server: "MetaQuotes-Demo"
+  # MT5 登录账号
+  login: 5050445394
+  # MT5 登录密码
+  password: "UuVy*b7g"
+  # MT5 服务器名称
+  server: "MetaQuotes-Demo"
 
   #账户2
   # MT5 登录账号
-  login: 111
-  # MT5 登录密码
-  password: "0000"
-  # MT5 服务器名称
+  # login: 277679314
+  # # MT5 登录密码
+  # password: "!1qaz2wsxQ"
+  # # MT5 服务器名称
+  # server: "Exness-MT5Trial5"
   server: "Exness-MT5Trial5"
 
   # MT5 客户端路径，留空表示使用默认安装位置

@@ -4,5 +4,14 @@ from mt5_quant.strategy.ema_cross_atr import EmaCrossAtrStrategy
 from mt5_quant.strategy.ma_cross_atr import MovingAverageAtrStrategy
 from mt5_quant.strategy.btc_m15_regime import BtcM15RegimeStrategy
 from mt5_quant.strategy.xau_m1_momentum import XauM1MomentumStrategy
+from mt5_quant.strategy.xau_m5_wave import XauM5WaveStrategy
+from mt5_quant.strategy.xau_m15_wave import XauM15WaveStrategy
 
-__all__ = ["EmaCrossAtrStrategy", "MovingAverageAtrStrategy", "XauM1MomentumStrategy", "BtcM15RegimeStrategy"]
+__all__ = [
+    "EmaCrossAtrStrategy",
+    "MovingAverageAtrStrategy",
+    "XauM1MomentumStrategy",
+    "BtcM15RegimeStrategy",
+    "XauM5WaveStrategy",
+    "XauM15WaveStrategy",
+]

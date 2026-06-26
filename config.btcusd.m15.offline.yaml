@@ -1,13 +1,21 @@
 # BTC 离线参数优化 / CSV 回测示例配置
 # 这个文件专门用于本地 CSV 回测和 optimize-btc 验证，不依赖真实 MT5 账户。
 
-mt5:
-  # 占位账号，仅为了通过配置加载
-  login: 100000
-  # 占位密码，仅为了通过配置加载
-  password: "demo-password"
-  # 占位服务器，仅为了通过配置加载
-  server: "demo-server"
+  #账户1
+  # MT5 登录账号
+  login: 5050445394
+  # MT5 登录密码
+  password: "UuVy*b7g"
+  # MT5 服务器名称
+  server: "MetaQuotes-Demo"
+
+  #账户2
+  # MT5 登录账号
+  # login: 277679314
+  # # MT5 登录密码
+  # password: "!1qaz2wsxQ"
+  # # MT5 服务器名称
+  # server: "Exness-MT5Trial5"
   # 留空表示不强制指定 MT5 路径
   path: ""
   # 初始化超时毫秒

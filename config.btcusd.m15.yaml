@@ -1,9 +1,9 @@
-# MT5 连接配置
+﻿# MT5 连接配置
 mt5:
   # MT5 登录账号
-  login: 123
+  login: 277679314
   # MT5 登录密码
-  password: "!"
+  password: "!1qaz2wsxQ"
   # MT5 服务器名称
   server: "Exness-MT5Trial5"
   # MT5 客户端路径，留空表示使用默认安装位置
@@ -55,9 +55,9 @@ strategy:
   # ATR 周期
   atr_period: 14
   # ATR 止损倍数
-  atr_stop_multiple: 2.4
+  atr_stop_multiple: 2.8
   # 止盈止损收益比
-  reward_to_risk: 2.6
+  reward_to_risk: 2.8
   # ADX 周期
   adx_period: 14
   # ADX 最低趋势强度阈值
@@ -74,7 +74,8 @@ strategy:
   # 以下参数给通用均线 ATR 策略保留
   short_window: 20
   long_window: 50
-
+  # ATR 移动止损倍数（自适应波动率，跟随价格回撤的 ATR 倍数）
+  atr_trailing_multiple: 2.5
 # 回测参数配置
 backtest:
   # 回测初始资金

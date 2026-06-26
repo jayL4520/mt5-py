@@ -66,3 +66,6 @@ htmlcov/
 .env.local
 .env.*.local
 /build
+
+node_modules/
+*__pycache__

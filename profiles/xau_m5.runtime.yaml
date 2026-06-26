@@ -1,0 +1,81 @@
+﻿mt5:
+  login: 5050445394
+  password: UuVy*b7g
+  server: MetaQuotes-Demo
+  path: ''
+  timeout: 60000
+  portable: false
+trading:
+  symbol: XAUUSD
+  timeframe: M5
+  history_bars: 3000
+  mt5_bar_time_shift_hours: 3.0
+  slippage_points: 50
+  magic_number: 260516
+  comment: xau-m5-wave
+  poll_interval_seconds: 2
+  max_open_positions: 1
+strategy:
+  name: xau_m5_wave
+  risk_per_trade: 0.0025
+  ema_fast: 21
+  ema_slow: 55
+  rsi_period: 14
+  rsi_buy_threshold: 58.0
+  rsi_sell_threshold: 42.0
+  breakout_lookback: 24
+  volume_window: 20
+  volume_multiplier: 1.05
+  breakout_buffer_pct: 0.0002
+  take_profit_pct: 0.003
+  stop_loss_pct: 0.004
+  short_window: 20
+  long_window: 50
+  atr_period: 14
+  atr_stop_multiple: 2.4
+  reward_to_risk: 2.0
+  ema_mid: 0
+  atr_min_threshold: 0.0
+  us_session_blackout: false
+  leverage_multiplier: 1.1
+  atr_trailing_multiple: 2.5
+  adx_threshold: 0.0
+backtest:
+  initial_balance: 110000.0
+  commission_per_lot: 0.0
+  spread_points: 50
+  contract_size: 1.0
+safety:
+  timezone: Asia/Shanghai
+  trading_windows:
+  - 14:00-05:00
+  max_daily_loss_pct: 0.02
+  max_consecutive_losses: 6
+  one_direction_per_day: false
+  news_blackout_windows:
+  - 2026-05-18 20:25/2026-05-18 20:45
+  trailing_stop_enabled: true
+  trailing_trigger_pct: 0.0015
+  trailing_distance_pct: 0.0012
+news_calendar:
+  enabled: true
+  provider: mt5_file
+  api_key: guest:guest
+  countries:
+  - united states
+  importance: 3
+  pre_blackout_minutes: 10
+  post_blackout_minutes: 10
+  lookahead_days: 7
+  cache_minutes: 30
+  request_timeout_seconds: 20
+  common_filename: mt5_calendar_events.csv
+  file_path: ''
+reporting:
+  output_dir: reports/xauusd_m5
+  save_summary_json: true
+  save_trades_csv: true
+  save_equity_csv: true
+guardrails:
+  max_loss_streak_3: 3
+  max_loss_streak_5: 5

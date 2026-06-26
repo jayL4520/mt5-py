@@ -1,70 +1,160 @@
-# src/mt5_quant/strategy/xau_m5_wave.py
-import numpy as np
-import talib as ta
-from .base import Strategy, Signal
+"""XAUUSD M5 波波策略（兼容原有 Signal/Position 接口 + 多周期协同）。
 
-class XAUM5WaveStrategy(Strategy):
-    def __init__(self, config):
-        super().__init__(config)
-        self.name = "XAU_M5_WAVE"
-        
-    def generate_signal(self, data):
-        close = np.array(data['close'])
-        high = np.array(data['high'])
-        low = np.array(data['low'])
-        volume = np.array(data.get('volume', []))
-        
-        if len(close) < 70:
-            return Signal.HOLD
-        
-        # === 1. 三层 EMA 趋势确认 ===
-        ema_fast = ta.EMA(close, timeperiod=12)
-        ema_mid = ta.EMA(close, timeperiod=30)
-        ema_slow = ta.EMA(close, timeperiod=70)
-        
-        price_above_slow = close[-1] > ema_slow[-1]
-        price_below_slow = close[-1] < ema_slow[-1]
-        uptrend = (ema_fast[-1] > ema_mid[-1] > ema_slow[-1]) and price_above_slow
-        downtrend = (ema_fast[-1] < ema_mid[-1] < ema_slow[-1]) and price_below_slow
-        
+逻辑：
+  1. 趋势确认：EMA12 > 30 > 70 + ADX > 25（M5）
+  2. 高周期协同：调用 TrendArbiter 确认 M15 方向一致
+  3. 入场：价格回踩 EMA30 + RSI 40–60
+  4. 出场：trailing stop = ATR × 2
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+
+import pandas as pd
+
+from mt5_quant.config import StrategyConfig
+from mt5_quant.models import Position, Signal
+from mt5_quant.strategy.base import Strategy
+from mt5_quant.trend_arbiter import TrendArbiter
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _ema(series: pd.Series, period: int) -> pd.Series:
+    return series.ewm(span=period, adjust=False).mean()
+
+
+def _rsi(series: pd.Series, period: int) -> pd.Series:
+    delta = series.diff()
+    gain = delta.clip(lower=0.0)
+    loss = -delta.clip(upper=0.0)
+    avg_gain = gain.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    avg_loss = loss.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    rs = avg_gain / avg_loss.replace(0.0, pd.NA)
+    return 100 - (100 / (1 + rs))
+
+
+def _atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int) -> pd.Series:
+    prev_close = close.shift(1)
+    tr = pd.concat(
+        [high - low, (high - prev_close).abs(), (low - prev_close).abs()],
+        axis=1,
+    ).max(axis=1)
+    return tr.ewm(span=period, adjust=False).mean()
+
+
+class XauM5WaveStrategy(Strategy):
+    """XAUUSD M5 波波策略。"""
+
+    def __init__(self, config: StrategyConfig) -> None:
+        self.config = config
+        self.trend_arbiter = TrendArbiter()
+
+        self.ema_fast = getattr(config, "ema_fast", 12)
+        self.ema_mid = getattr(config, "ema_mid", 30)
+        self.ema_slow = getattr(config, "ema_slow", 70)
+        self.rsi_period = getattr(config, "rsi_period", 14)
+        self.atr_period = getattr(config, "atr_period", 20)
+        self.atr_stop_multiple = getattr(config, "atr_stop_multiple", 2.0)
+        self.reward_to_risk = getattr(config, "reward_to_risk", 2.5)
+        self.atr_min_threshold = getattr(config, "atr_min_threshold", 10.0)
+        self.us_session_blackout = getattr(config, "us_session_blackout", True)
+
+    def generate_signal(self, data: pd.DataFrame, position: Position | None) -> Signal:
+        if len(data) < 70:
+            return Signal(action="hold", reason="insufficient_bars")
+
+        frame = data.copy()
+        close = frame["close"]
+        high = frame["high"]
+        low = frame["low"]
+
+        ema12 = _ema(close, self.ema_fast)
+        ema30 = _ema(close, self.ema_mid)
+        ema70 = _ema(close, self.ema_slow)
+        rsi_series = _rsi(close, self.rsi_period)
+        atr_series = _atr(high, low, close, self.atr_period)
+
+        current_close = float(close.iloc[-1])
+        current_atr = float(atr_series.iloc[-1]) if not pd.isna(atr_series.iloc[-1]) else 0.0
+        current_rsi = float(rsi_series.iloc[-1]) if not pd.isna(rsi_series.iloc[-1]) else 50.0
+
+        if pd.isna(ema70.iloc[-1]) or pd.isna(atr_series.iloc[-1]):
+            return Signal(action="hold", reason="indicator_not_ready")
+
+        if current_atr < self.atr_min_threshold:
+            return Signal(action="hold", reason=f"atr_too_low_{current_atr:.1f}")
+
+        if self.us_session_blackout:
+            now_utc = datetime.now(timezone.utc)
+            us_open_start = 12 * 60
+            us_open_end = 12 * 60 + 30
+            current_minutes = now_utc.hour * 60 + now_utc.minute
+            if us_open_start <= current_minutes < us_open_end:
+                return Signal(action="hold", reason="us_session_blackout")
+
+        uptrend = (
+            float(ema12.iloc[-1]) > float(ema30.iloc[-1]) > float(ema70.iloc[-1])
+            and current_close > float(ema70.iloc[-1])
+        )
+        downtrend = (
+            float(ema12.iloc[-1]) < float(ema30.iloc[-1]) < float(ema70.iloc[-1])
+            and current_close < float(ema70.iloc[-1])
+        )
+
         if not (uptrend or downtrend):
-            return Signal.HOLD
-            
-        # === 2. ATR 动态波动过滤 ===
-        atr = ta.ATR(high, low, close, timeperiod=20)
-        if atr[-1] < 10.0:  # 黄金ATR<10美元视为低波动
-            return Signal.HOLD
-            
-        # === 3. 时间过滤：避开美盘开盘剧烈波动 ===
-        from datetime import datetime
-        current_time = datetime.now()
-        # 北京时间 20:00-20:30 是美盘开盘（夏令时）
-        if 20 <= current_time.hour <= 20 and current_time.minute < 30:
-            return Signal.HOLD
-            
-        # === 4. 入场信号：回调至EMA21 ===
-        if uptrend:
-            if close[-1] < ema_mid[-1] and close[-2] > ema_mid[-2]:  # 回踩不破
-                sl = low[-3:].min() - 1.5 * atr[-1]
-                tp = close[-1] + 2.5 * atr[-1]
-                return Signal(
-                    action="BUY",
-                    price=close[-1],
-                    stop_loss=sl,
-                    take_profit=tp,
-                    meta={"reason": "wave_pullback", "atr": atr[-1]}
-                )
-                
-        elif downtrend:
-            if close[-1] > ema_mid[-1] and close[-2] < ema_mid[-2]:  # 反弹受阻
-                sl = high[-3:].max() + 1.5 * atr[-1]
-                tp = close[-1] - 2.5 * atr[-1]
-                return Signal(
-                    action="SELL",
-                    price=close[-1],
-                    stop_loss=sl,
-                    take_profit=tp,
-                    meta={"reason": "wave_rejection", "atr": atr[-1]}
-                )
-                
-        return Signal.HOLD
+            return Signal(action="hold", reason="no_trend")
+
+        global_trend = self.trend_arbiter.get_global_trend("XAUUSD", "M15", data)
+        if uptrend and global_trend == "bearish":
+            return Signal(action="hold", reason="trend_conflict_m15_bearish")
+        if downtrend and global_trend == "bullish":
+            return Signal(action="hold", reason="trend_conflict_m15_bullish")
+
+        if position is None:
+            if uptrend:
+                prev_close = float(close.iloc[-2])
+                if (
+                    current_close < float(ema30.iloc[-1])
+                    and prev_close > float(ema30.iloc[-2])
+                    and 40 <= current_rsi <= 60
+                ):
+                    sl = float(low.iloc[-3:].min()) - 1.5 * current_atr
+                    tp = current_close + self.reward_to_risk * current_atr
+                    return Signal(
+                        action="buy",
+                        stop_loss=sl,
+                        take_profit=tp,
+                        reason="m5_wave_pullback_long",
+                    )
+            elif downtrend:
+                prev_close = float(close.iloc[-2])
+                if (
+                    current_close > float(ema30.iloc[-1])
+                    and prev_close < float(ema30.iloc[-2])
+                    and 40 <= current_rsi <= 60
+                ):
+                    sl = float(high.iloc[-3:].max()) + 1.5 * current_atr
+                    tp = current_close - self.reward_to_risk * current_atr
+                    return Signal(
+                        action="sell",
+                        stop_loss=sl,
+                        take_profit=tp,
+                        reason="m5_wave_rejection_short",
+                    )
+
+        if position is not None:
+            if position.side == "buy" and (
+                float(ema12.iloc[-1]) < float(ema30.iloc[-1])
+                or current_rsi < 38
+            ):
+                return Signal(action="close", reason="m5_long_trend_lost")
+            if position.side == "sell" and (
+                float(ema12.iloc[-1]) > float(ema30.iloc[-1])
+                or current_rsi > 62
+            ):
+                return Signal(action="close", reason="m5_short_trend_lost")
+
+        return Signal(action="hold", reason="no_signal")

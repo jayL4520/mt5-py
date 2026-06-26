@@ -17,7 +17,14 @@ from mt5_quant.data import Mt5Gateway
 from mt5_quant.launcher_profiles import PROFILE_PRESETS, get_launch_config, get_logs_dir
 from mt5_quant.live import LiveTradingEngine
 from mt5_quant.news_calendar import validate_calendar_data_source
-from mt5_quant.strategy import BtcM15RegimeStrategy, EmaCrossAtrStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
+from mt5_quant.strategy import (
+    BtcM15RegimeStrategy,
+    EmaCrossAtrStrategy,
+    MovingAverageAtrStrategy,
+    XauM15WaveStrategy,
+    XauM1MomentumStrategy,
+    XauM5WaveStrategy,
+)
 
 
 def configure_logging() -> None:
@@ -60,6 +67,10 @@ def build_strategy(config: AppConfig):
         return XauM1MomentumStrategy(config.strategy)
     if config.strategy.name == "btc_m15_regime":
         return BtcM15RegimeStrategy(config.strategy)
+    if config.strategy.name == "xau_m5_wave":
+        return XauM5WaveStrategy(config.strategy)
+    if config.strategy.name == "xau_m15_wave":
+        return XauM15WaveStrategy(config.strategy)
     raise ValueError(f"Unsupported strategy: {config.strategy.name}")
 
 
@@ -158,10 +169,12 @@ def run_text_launcher() -> None:
     print("启动模式：文本版多品种切换启动器")
 
     profile_key = prompt_choice(
-        "请选择要运行的品种：",
+        "请选择要运行的品种/周期：",
         [
-            ("1", PROFILE_PRESETS["xau"]["label"]),
-            ("2", PROFILE_PRESETS["btc"]["label"]),
+            ("1", PROFILE_PRESETS["xau_m1"]["label"]),
+            ("2", PROFILE_PRESETS["xau_m5"]["label"]),
+            ("3", PROFILE_PRESETS["xau_m15"]["label"]),
+            ("4", PROFILE_PRESETS["btc"]["label"]),
             ("q", "退出"),
         ],
     )
@@ -169,7 +182,8 @@ def run_text_launcher() -> None:
         print("已退出。")
         return
 
-    profile_name = "xau" if profile_key == "1" else "btc"
+    profile_map = {"1": "xau_m1", "2": "xau_m5", "3": "xau_m15", "4": "btc"}
+    profile_name = profile_map[profile_key]
     config_path = get_launch_config(profile_name)
     config = load_config(config_path)
 
@@ -257,7 +271,7 @@ def build_parser() -> argparse.ArgumentParser:
     live_parser.add_argument("--session-id", help="Optional runtime session id")
 
     launcher_parser = subparsers.add_parser("launch", help="Open the interactive launcher menu")
-    launcher_parser.add_argument("--profile", choices=["xau", "btc"], help="Preset profile to start")
+    launcher_parser.add_argument("--profile", choices=["xau_m1", "xau_m5", "xau_m15", "btc"], help="Preset profile to start")
     launcher_parser.add_argument("--mode", choices=["live", "backtest"], help="Run mode")
     launcher_parser.add_argument("--bars", type=int, help="Bars used for MT5 history backtest")
     launcher_parser.add_argument("--csv", help="CSV path used for CSV backtest")

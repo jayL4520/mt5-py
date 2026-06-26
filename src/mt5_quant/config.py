@@ -1,4 +1,4 @@
-"""配置加载模块。"""
+﻿"""配置加载模块。"""
 
 from __future__ import annotations
 
@@ -57,6 +57,7 @@ class StrategyConfig:
     reward_to_risk: float
     risk_per_trade: float
     leverage_multiplier: float
+    atr_trailing_multiple: float
     ema_fast: int
     ema_slow: int
     rsi_period: int
@@ -183,6 +184,7 @@ def load_config(path: str | Path) -> AppConfig:
             reward_to_risk=float(strategy.get("reward_to_risk", 2.0)),
             risk_per_trade=float(strategy.get("risk_per_trade", 0.01)),
             leverage_multiplier=float(strategy.get("leverage_multiplier", 1.1)),
+            atr_trailing_multiple=float(strategy.get("atr_trailing_multiple", 2.0)),
             ema_fast=int(strategy.get("ema_fast", 21)),
             ema_slow=int(strategy.get("ema_slow", 55)),
             rsi_period=int(strategy.get("rsi_period", 14)),
@@ -321,3 +323,4 @@ def load_config(path: str | Path) -> AppConfig:
             raise ConfigError("news_calendar.request_timeout_seconds must be at least 1.")
 
     return cfg
+

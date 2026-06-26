@@ -1,22 +1,11 @@
 # MT5 连接配置
 mt5:
-
-  #账户1
   # MT5 登录账号
-  login: 33
+  login: 5050445394
   # MT5 登录密码
-  password: "1111"
+  password: "UuVy*b7g"
   # MT5 服务器名称
   server: "MetaQuotes-Demo"
-
-  #账户2
-  # MT5 登录账号
-  # login: 
-  # # MT5 登录密码
-  # password: "!"
-  # # MT5 服务器名称
-  # server: "Exness-MT5Trial5"
-
   # MT5 客户端路径，留空表示使用默认安装位置
   path: ""
   # 初始化连接超时时间，单位毫秒
@@ -26,14 +15,13 @@ mt5:
 
 # 交易运行配置
 trading:
-
- #账户1 交易品种
+  # 交易品种
   symbol: "XAUUSD"
 
   # 交易周期
-  timeframe: "M1"
+  timeframe: "M5"
   # 每次拉取的历史 K 线数量
-  history_bars: 1500
+  history_bars: 3000
   # K 线时间修正小时数。若 MT5 返回的是服务器时间(例如 UTC+3)但系统按 UTC 解析，则填 3 表示减 3 小时校准到真实 UTC；正常券商填 0
   mt5_bar_time_shift_hours: 3
   # 下单允许的最大滑点，单位 points
@@ -41,7 +29,7 @@ trading:
   # 策略魔术号，用于区分本系统订单
   magic_number: 260516
   # 订单备注
-  comment: "xau-m1-momentum"
+  comment: "xau-m5-wave"
   # 轮询最新 K 线的间隔秒数
   poll_interval_seconds: 2
   # 最大同时持仓数
@@ -50,7 +38,7 @@ trading:
 # 策略参数配置
 strategy:
   # 策略名称
-  name: "xau_m1_momentum"
+  name: "xau_m5_wave"
   # 单笔风险占净值比例
   risk_per_trade: 0.0025
   # 快速 EMA 周期
@@ -147,8 +135,7 @@ news_calendar:
 # 回测报表输出配置
 reporting:
   # 报表输出目录
-  output_dir: "reports/xauusd_m1"
-  # output_dir: "reports/xauusdm_m1"
+  output_dir: "reports/xauusd_m5"
   # 是否导出 summary.json
   save_summary_json: true
   # 是否导出 trades.csv

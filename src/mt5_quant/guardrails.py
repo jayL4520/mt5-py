@@ -126,54 +126,169 @@ class SafetyGuard:
             return start <= minute_of_day < end
         return minute_of_day >= start or minute_of_day < end
     
-# 强化熔断： 阶梯式冷却机制
-# 连续亏损计数
-# 自动暂停交易
-# 冷却后自动恢复
-# 日志记录完整
+# ── 强化熔断：阶梯式冷却机制 ─────────────────────────────────────────
+import json
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Literal
+
+
+CoolingMode = Literal["normal", "cooldown_15m", "cooldown_1h", "close_only"]
+
+
 class LossStreakGuardrail:
-    def __init__(self, config):
-        self.max_streak_3 = config.get("max_loss_streak_3", 3)
-        self.max_streak_5 = config.get("max_loss_streak_5", 5)
-        self.cooldown_15m = 15 * 60
-        self.cooldown_1h = 3600
-        self.loss_streak = 0
-        self.last_trade_time = None
-        self.cooldown_until = None
-        self.mode = "normal"  # normal, cooldown_15m, cooldown_1h
-        
-    def on_trade_result(self, is_profit):
-        """每次平仓后调用"""
+    """阶梯式熔断系统。
+
+    - ≥3 连亏：PAUSE 15 分钟
+    - ≥5 连亏：CLOSE_ONLY 1 小时
+    - ≥7 连亏：ALERT + 保存行情片段
+
+    状态持久化：~/.mt5_py/state/{symbol}_{timeframe}.cooling.json
+    """
+
+    STATE_DIR = Path.home() / ".mt5_py" / "state"
+
+    def __init__(
+        self,
+        symbol: str,
+        timeframe: str,
+        max_streak_3: int = 3,
+        max_streak_5: int = 5,
+        max_streak_7: int = 7,
+        cooldown_15m_minutes: int = 15,
+        cooldown_1h_minutes: int = 60,
+    ) -> None:
+        self.symbol = symbol
+        self.timeframe = timeframe
+        self.max_streak_3 = max_streak_3
+        self.max_streak_5 = max_streak_5
+        self.max_streak_7 = max_streak_7
+        self.cooldown_15m = cooldown_15m_minutes * 60
+        self.cooldown_1h = cooldown_1h_minutes * 60
+
+        # Runtime state
+        self.loss_streak: int = 0
+        self.mode: CoolingMode = "normal"
+        self.cooldown_until: float = 0.0
+
+        # Callbacks
+        self._alert_callback = None
+
+        # Load persisted state
+        self._load_state()
+
+    def set_alert_callback(self, callback) -> None:
+        """设置警报回调函数（用于接 Telegram / 邮件）。"""
+        self._alert_callback = callback
+
+    def on_trade_result(self, is_profit: bool, extra_info: str = "") -> None:
+        """每次平仓后调用。"""
         if is_profit:
             self.loss_streak = 0
             self._log("Profit! Reset loss streak.")
         else:
             self.loss_streak += 1
             self._log(f"Loss #{self.loss_streak}")
-            
-            if self.loss_streak >= self.max_streak_5:
+
+            if self.loss_streak >= self.max_streak_7:
+                self.mode = "close_only"
+                self.cooldown_until = time.time() + self.cooldown_1h
+                msg = (
+                    f"🚨 {self.loss_streak}连亏！进入仅平仓模式1小时，"
+                    f"至 {datetime.fromtimestamp(self.cooldown_until).strftime('%H:%M:%S')}"
+                )
+                self._alert(msg, extra_info)
+            elif self.loss_streak >= self.max_streak_5:
                 self.mode = "cooldown_1h"
                 self.cooldown_until = time.time() + self.cooldown_1h
-                self._alert(f"🚨 5连亏！暂停交易1小时，至 {datetime.fromtimestamp(self.cooldown_until).strftime('%H:%M')}")
+                self._log(f"⚠️ {self.loss_streak}连亏，暂停1小时")
             elif self.loss_streak >= self.max_streak_3:
                 self.mode = "cooldown_15m"
                 self.cooldown_until = time.time() + self.cooldown_15m
-                self._log("⚠️ 3连亏，暂停15分钟")
-                
-    def can_trade(self):
+                self._log(f"⚠️ {self.loss_streak}连亏，暂停15分钟")
+
+        self._save_state()
+
+    def can_trade(self) -> bool:
+        """检查当前是否允许开新仓。"""
         if self.mode == "normal":
             return True
             
         if self.cooldown_until and time.time() > self.cooldown_until:
             self.mode = "normal"
+            self.cooldown_until = 0.0
             self._log("✅ 冷却结束，恢复交易")
+            self._save_state()
             return True
             
         return False
-        
-    def _log(self, msg):
+
+    def can_close_only(self) -> bool:
+        """检查是否只允许平仓（close_only 模式）。"""
+        return self.mode == "close_only"
+
+    def get_status(self) -> dict:
+        """返回当前熔断状态（可用于前端展示）。"""
+        remaining = max(0.0, self.cooldown_until - time.time()) if self.cooldown_until > 0 else 0.0
+        return {
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
+            "loss_streak": self.loss_streak,
+            "mode": self.mode,
+            "cooldown_remaining_seconds": int(remaining),
+            "can_trade": self.can_trade(),
+        }
+
+    def _state_file(self) -> Path:
+        self.STATE_DIR.mkdir(parents=True, exist_ok=True)
+        return self.STATE_DIR / f"{self.symbol}_{self.timeframe}.cooling.json"
+
+    def _save_state(self) -> None:
+        path = self._state_file()
+        try:
+            path.write_text(
+                json.dumps(
+                    {
+                        "loss_streak": self.loss_streak,
+                        "mode": self.mode,
+                        "cooldown_until": self.cooldown_until,
+                        "updated_at": time.time(),
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            self._log(f"保存熔断状态失败: {exc}")
+
+    def _load_state(self) -> None:
+        path = self._state_file()
+        if not path.exists():
+            return
+        try:
+            state = json.loads(path.read_text(encoding="utf-8"))
+            self.loss_streak = int(state.get("loss_streak", 0))
+            self.mode = state.get("mode", "normal")
+            self.cooldown_until = float(state.get("cooldown_until", 0.0))
+
+            # 如果冷却已过期，自动恢复
+            if self.cooldown_until > 0 and time.time() > self.cooldown_until:
+                self.mode = "normal"
+                self.cooldown_until = 0.0
+                self.loss_streak = 0
+                self._log("重启后冷却已过期，自动恢复交易")
+        except (json.JSONDecodeError, OSError, KeyError) as exc:
+            self._log(f"读取熔断状态失败，使用默认值: {exc}")
+            self.loss_streak = 0
+            self.mode = "normal"
+            self.cooldown_until = 0.0
+
+    def _log(self, msg: str) -> None:
         print(f"[GUARDRAIL] {msg}")
-        
-    def _alert(self, msg):
-        # TODO: 接入 Telegram / 邮件
-        print(f"[ALERT] {msg}")
+
+    def _alert(self, msg: str, extra_info: str = "") -> None:
+        if self._alert_callback:
+            self._alert_callback(msg, extra_info)
+        else:
+            print(f"[ALERT] {msg}")

@@ -10,12 +10,20 @@ import yaml
 
 
 PROFILE_PRESETS = {
-    "xau": {
-        "label": "黄金 XAUUSD / M1",
+    "xau_m1": {
+        "label": "黄金 XAUUSD / M1 动量",
         "config": "config.xauusd.m1.yaml",
     },
+    "xau_m5": {
+        "label": "黄金 XAUUSD / M5 波波",
+        "config": "config.xauusd.m5.yaml",
+    },
+    "xau_m15": {
+        "label": "黄金 XAUUSD / M15 波段",
+        "config": "config.xauusd.m15.yaml",
+    },
     "btc": {
-        "label": "比特币 BTCUSD / M15",
+        "label": "比特币 BTCUSD / M15 状态机",
         "config": "config.btcusd.m15.yaml",
     },
 }

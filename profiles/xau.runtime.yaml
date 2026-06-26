@@ -1,17 +1,17 @@
-mt5:
-  login: 11
-  password: 111
+﻿mt5:
+  login: 5050445394
+  password: UuVy*b7g
   server: MetaQuotes-Demo
   path: ''
   timeout: 60000
   portable: false
 trading:
   symbol: XAUUSD
-  timeframe: M1
+  timeframe: M5
   history_bars: 1500
   slippage_points: 50
   magic_number: 260516
-  comment: xau-m1-momentum
+  comment: xau-m5-momentum
   poll_interval_seconds: 2
   max_open_positions: 1
   mt5_bar_time_shift_hours: 8.0
@@ -29,10 +29,10 @@ strategy:
   short_window: 20
   long_window: 50
   atr_period: 14
-  atr_stop_multiple: 2.0
+  atr_stop_multiple: 2.4
   reward_to_risk: 2.0
   leverage_multiplier: 10.0
-backtest:
+  atr_trailing_multiple: 2.5
   initial_balance: 110000
   commission_per_lot: 0.0
   spread_points: 50
@@ -64,7 +64,7 @@ news_calendar:
   common_filename: mt5_calendar_events.csv
   file_path: ''
 reporting:
-  output_dir: reports/xauusd_m1
+  output_dir: reports/xauusd_m5
   save_summary_json: true
   save_trades_csv: true
   save_equity_csv: true

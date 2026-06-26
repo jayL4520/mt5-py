@@ -1,13 +1,21 @@
-# 纯 EMA 交叉 + ATR 止损止盈策略示例配置
+﻿# 纯 EMA 交叉 + ATR 止损止盈策略示例配置
 # 这份配置适合作为第三套独立策略入口，用于和黄金/BTC 专用策略做对比回测
 
-mt5:
+  #账户1
   # MT5 登录账号
-  login: 12345678
+  login: 5050445394
   # MT5 登录密码
-  password: "your-password"
+  password: "UuVy*b7g"
   # MT5 服务器名称
-  server: "Broker-Demo"
+  server: "MetaQuotes-Demo"
+
+  #账户2
+  # MT5 登录账号
+  # login: 277679314
+  # # MT5 登录密码
+  # password: "!1qaz2wsxQ"
+  # # MT5 服务器名称
+  # server: "Exness-MT5Trial5"
   # MT5 客户端路径，留空表示使用默认安装位置
   path: ""
   # 初始化连接超时时间，单位毫秒
@@ -47,7 +55,7 @@ strategy:
   # ATR 周期
   atr_period: 14
   # ATR 止损倍数
-  atr_stop_multiple: 2.2
+  atr_stop_multiple: 2.6
   # 固定盈亏比
   reward_to_risk: 2.4
 
@@ -65,7 +73,8 @@ strategy:
   volume_window: 20
   volume_multiplier: 1.0
   breakout_buffer_pct: 0.0
-
+  # ATR 移动止损倍数（自适应波动率）
+  atr_trailing_multiple: 2.5
 backtest:
   # 回测初始资金
   initial_balance: 100000

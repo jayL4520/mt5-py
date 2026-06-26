@@ -70,7 +70,7 @@ class LauncherWindow:
         self.root.geometry("820x700")
         self.root.minsize(820, 700)
 
-        self.profile_var = tk.StringVar(value="xau")
+        self.profile_var = tk.StringVar(value="xau_m1")
         self.report_dir_var = tk.StringVar(value="")
         self.csv_path_var = tk.StringVar(value="")
         self.auto_close_var = tk.BooleanVar(value=False)
@@ -151,6 +151,29 @@ class LauncherWindow:
             ("trading", "slippage_points", "允许滑点(points)", int),
             ("trading", "comment", "订单备注", str),
             ("reporting", "output_dir", "默认报表目录", str),
+            # 策略参数
+            ("strategy", "name", "策略名称 (strategy.name)", str),
+            # 通用均线参数
+            ("strategy", "ema_fast", "EMA 快速周期", int),
+            ("strategy", "ema_slow", "EMA 慢速周期", int),
+            ("strategy", "rsi_period", "RSI 周期", int),
+            ("strategy", "rsi_buy_threshold", "RSI 多头阈值", float),
+            ("strategy", "rsi_sell_threshold", "RSI 空头阈值", float),
+            # 突破参数
+            ("strategy", "breakout_lookback", "突破回看 K 线数量", int),
+            ("strategy", "breakout_buffer_pct", "突破缓冲比例", float),
+            ("strategy", "volume_window", "成交量均值窗口", int),
+            ("strategy", "volume_multiplier", "成交量确认倍数", float),
+            # 止盈止损
+            ("strategy", "take_profit_pct", "固定止盈比例", float),
+            ("strategy", "stop_loss_pct", "固定止损比例", float),
+            ("strategy", "atr_period", "ATR 周期", int),
+            ("strategy", "atr_stop_multiple", "ATR 止损倍数", float),
+            ("strategy", "reward_to_risk", "盈亏比", float),
+            # M5 / M15 专用
+            ("strategy", "ema_mid", "EMA 中速周期(M5/M15)", int),
+            ("strategy", "atr_min_threshold", "ATR 最小波动阈值", float),
+            ("strategy", "us_session_blackout", "美盘开盘避险", bool),
         ]
         self._render_fields(self.basic_tab, fields)
 
@@ -158,6 +181,8 @@ class LauncherWindow:
         fields = [
             ("strategy", "risk_per_trade", "单笔风险比例", float),
             ("strategy", "leverage_multiplier", "杠杆数", float),
+            ("strategy", "adx_period", "ADX 周期(BTC)", int),
+            ("strategy", "adx_threshold", "ADX 趋势阈值(BTC)", float),
             ("safety", "max_daily_loss_pct", "日内最大亏损比例", float),
             ("safety", "max_consecutive_losses", "连续亏损允许次数", int),
             ("safety", "trading_windows", "交易时段(逗号分隔)", list),
@@ -167,6 +192,8 @@ class LauncherWindow:
             ("safety", "trailing_distance_pct", "移动止损跟随比例", float),
             ("news_calendar", "enabled", "启用自动新闻日历", bool),
             ("news_calendar", "provider", "新闻日历来源", str),
+            ("backtest", "initial_balance", "回测初始资金", float),
+            ("backtest", "spread_points", "模拟点差(points)", int),
         ]
         self._render_fields(self.risk_tab, fields)
         override_frame = ttk.LabelFrame(self.risk_tab, text="手动风控解除", padding=8)
@@ -481,6 +508,7 @@ class LauncherWindow:
         lines = [
             f"品种：{summary.get('symbol', '')}",
             f"周期：{summary.get('timeframe', '')}",
+            f"策略：{summary.get('strategy', '')}",
             f"样本数量：{summary.get('bars', 0)}",
             f"原始入场信号数：{summary.get('raw_entry_signal_count', 0)}",
             f"回测成交数：{summary.get('total_trades', 0)}",
@@ -490,7 +518,7 @@ class LauncherWindow:
             "",
             "诊断结论：",
         ]
-        for item in conclusions[:4]:
+        for item in conclusions[:6]:
             lines.append(f"- {item}")
         lines.extend(
             [
@@ -936,16 +964,22 @@ class LauncherWindow:
             messagebox.showerror("打开失败", str(exc))
 
     def _coerce_value(self, binding: FieldBinding) -> Any:
+        raw = str(binding.variable.get()).strip()
         if binding.caster is bool:
             return bool(binding.variable.get())
         if binding.caster is int:
-            return int(str(binding.variable.get()).strip())
+            try:
+                return int(raw)
+            except (ValueError, TypeError):
+                return 0
         if binding.caster is float:
-            return float(str(binding.variable.get()).strip())
+            try:
+                return float(raw)
+            except (ValueError, TypeError):
+                return 0.0
         if binding.caster is list:
-            raw = str(binding.variable.get()).strip()
             return [item.strip() for item in raw.split(",") if item.strip()]
-        return str(binding.variable.get()).strip()
+        return raw
 
     @staticmethod
     def _get_nested_value(data: dict[str, Any], path: tuple[str, ...]) -> Any:

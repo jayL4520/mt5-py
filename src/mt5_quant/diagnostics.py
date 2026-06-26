@@ -14,7 +14,14 @@ from mt5_quant.backtest import BacktestEngine
 from mt5_quant.config import AppConfig, load_config
 from mt5_quant.data import Mt5Gateway
 from mt5_quant.news_calendar import validate_calendar_data_source
-from mt5_quant.strategy import BtcM15RegimeStrategy, EmaCrossAtrStrategy, MovingAverageAtrStrategy, XauM1MomentumStrategy
+from mt5_quant.strategy import (
+    BtcM15RegimeStrategy,
+    EmaCrossAtrStrategy,
+    MovingAverageAtrStrategy,
+    XauM15WaveStrategy,
+    XauM1MomentumStrategy,
+    XauM5WaveStrategy,
+)
 
 
 TIMEFRAME_TO_MINUTES = {
@@ -38,6 +45,10 @@ def build_strategy(config: AppConfig):
         return XauM1MomentumStrategy(config.strategy)
     if config.strategy.name == "btc_m15_regime":
         return BtcM15RegimeStrategy(config.strategy)
+    if config.strategy.name == "xau_m5_wave":
+        return XauM5WaveStrategy(config.strategy)
+    if config.strategy.name == "xau_m15_wave":
+        return XauM15WaveStrategy(config.strategy)
     raise ValueError(f"Unsupported strategy: {config.strategy.name}")
 
 
